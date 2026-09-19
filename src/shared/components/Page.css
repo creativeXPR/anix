@@ -1,0 +1,57 @@
+/* flex:1 (not min-height:100svh) — always rendered inside AppShell's
+   content area, which is what actually owns the viewport-height
+   accounting (varies with nav orientation: a rail doesn't take vertical
+   space, a bottom bar does). Hardcoding 100svh here overflowed the shell
+   by the bottom bar's height. */
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.page__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.page__logo {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+}
+
+.page__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.page__content {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+@media (min-width: 900px) {
+  .page__content {
+    padding: 24px;
+    gap: 20px;
+  }
+
+  .page__header {
+    padding: 20px 24px;
+  }
+}

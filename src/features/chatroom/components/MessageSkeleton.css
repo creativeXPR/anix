@@ -1,0 +1,23 @@
+.message-skeleton {
+  height: 40px;
+  border-radius: 16px;
+  background: var(--accent-bg);
+  animation: message-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes message-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-skeleton {
+    animation: none;
+    opacity: 0.75;
+  }
+}

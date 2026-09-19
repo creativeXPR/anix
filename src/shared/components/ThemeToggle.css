@@ -1,0 +1,50 @@
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 260px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+/* Scoped as `.theme-toggle .theme-toggle__switch` (not the bare class) so
+   this always wins over a generic `<container> input` rule from wherever
+   ThemeToggle gets embedded — a real bug: ProfileScreen's own input
+   styling was overriding this switch's width/background at equal-ish
+   specificity, stretching it to the row's full width. */
+.theme-toggle .theme-toggle__switch {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.theme-toggle .theme-toggle__switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-h);
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.theme-toggle .theme-toggle__switch:checked {
+  background: var(--primary);
+}
+
+.theme-toggle .theme-toggle__switch:checked::before {
+  transform: translateX(20px);
+}

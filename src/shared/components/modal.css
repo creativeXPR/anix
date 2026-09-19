@@ -1,0 +1,56 @@
+/* Shared base for any overlay dialog (CreateLinkModal, ConfirmDialog) —
+   the backdrop, the card chrome, and the button row. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Also reused by LinkCard's inline theme picker — not modal-specific
+   despite the name, kept here since both need the identical swatch. */
+.modal__swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.modal__swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  cursor: pointer;
+}
+
+.modal__swatch--selected {
+  border-color: var(--text-h);
+}
+
+.modal__swatch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

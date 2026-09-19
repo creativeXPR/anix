@@ -1,0 +1,15 @@
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 16px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.empty-state__icon {
+  color: var(--text-muted);
+  stroke-width: 2;
+}

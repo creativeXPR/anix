@@ -1,0 +1,115 @@
+rules_version = '2';
+
+// See CLAUDE.md #008/#009 for the full design record.
+//
+// rooms/{roomId} and messageEndpoints/{endpointId}: up to 3 each per
+// account, roomId/endpointId is the user-chosen handle (not a random id
+// or the uid — that was the previous, now-superseded model). The
+// handle-uniqueness and 3-per-account cap are enforced by the
+// `createRoom`/`createMessageEndpoint` Cloud Functions (a transaction
+// can check "does this handle exist" + "how many do I already own"
+// atomically; security rules alone can't count existing docs). Rules
+// here just gate ownership for update/delete/list once a doc exists.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ---- Admin (2026-09-19) ----
+    //
+    // Mirrors Anime-space's admin/gate + adminUnlocks pattern exactly
+    // (see that project's firestore.rules for the original writeup):
+    // "logging into" /admin (AdminApp.jsx) is nothing but this write
+    // succeeding — the client submits the typed passcode as an
+    // adminUnlocks/{uid} doc's own `passcode` field, and the rule
+    // rejects the write outright unless it equals admin/gate's real
+    // value. The real passcode is never shipped in the JS bundle to
+    // check it there, and a later visit with the same uid (anonymous
+    // auth persists per-browser) finds the unlock doc already exists
+    // and skips the prompt. admin/gate itself is never directly
+    // readable/writable by any client — seeded once via the Admin SDK.
+    function isUnlockedAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/adminUnlocks/$(request.auth.uid));
+    }
+
+    match /admin/gate {
+      allow read, write: if false;
+    }
+
+    match /adminUnlocks/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.passcode == get(/databases/$(database)/documents/admin/gate).data.passcode;
+      allow delete: if false;
+    }
+
+    // Collection-group match so a single query lists every room's
+    // reports at once without the admin dashboard needing to already
+    // know every roomId — additive with the more specific rule inside
+    // match /rooms/{roomId} below (Firestore rules OR across every
+    // rule whose path matches a given request).
+    match /{path=**}/reports/{reportId} {
+      allow list, get: if isUnlockedAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      // Creation goes through the createRoom Cloud Function (Admin SDK,
+      // bypasses these rules) for the handle-uniqueness/3-cap checks —
+      // no direct client create.
+      allow create: if false;
+      allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid)
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt']);
+      // No client-side delete — goes through the deleteRoom Cloud
+      // Function so subcollections/Storage banner get cleaned up too.
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if true;
+        allow create: if true;
+        // No edit/delete — messages are anonymous and immutable (#002).
+        allow update, delete: if false;
+      }
+
+      match /typing/{participantId} {
+        allow read, write: if true;
+      }
+
+      match /presence/{participantId} {
+        allow read, write: if true;
+      }
+
+      match /reports/{reportId} {
+        allow create: if true;
+        // Only readable via the Admin SDK (a future moderation tool),
+        // never by clients.
+        allow read, update, delete: if false;
+      }
+    }
+
+    match /messageEndpoints/{endpointId} {
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow create: if false;
+      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow delete: if false;
+
+      // Anonymous senders write with no auth at all (that's the
+      // feature); only the endpoint's owner can ever read messages back.
+      match /messages/{messageId} {
+        allow create: if true;
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/messageEndpoints/$(endpointId)).data.ownerId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // Create-only from any signed-in user; read via the admin dashboard
+    // (isUnlockedAdmin) or the Firebase console, never by a regular
+    // client.
+    match /feedback/{feedbackId} {
+      allow create: if request.auth != null;
+      allow list, get: if isUnlockedAdmin();
+      allow update, delete: if false;
+    }
+  }
+}

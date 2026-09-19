@@ -1,0 +1,89 @@
+.composer {
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+}
+
+.composer__reply-preview,
+.composer__image-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  background: var(--panel-alt);
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.composer__reply-preview span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer__reply-thumb {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.composer__reply-preview button,
+.composer__image-preview button {
+  display: flex;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.composer__reply-preview svg,
+.composer__image-preview svg {
+  width: 16px;
+  height: 16px;
+}
+
+.composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.composer__attach {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.composer__input {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 14px;
+  font: inherit;
+  min-height: 44px;
+  max-height: 140px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.composer__send {
+  padding: 0 16px;
+}
+
+@media (min-width: 900px) {
+  .composer {
+    padding: 12px 24px;
+  }
+}

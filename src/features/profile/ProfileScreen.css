@@ -1,0 +1,35 @@
+.profile-screen__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.profile-screen__row {
+  display: flex;
+  gap: 10px;
+}
+
+.profile-screen__section input,
+.profile-screen__section textarea {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.profile-screen__footer {
+  margin: 8px 0 0;
+  text-align: center;
+  opacity: 0.6;
+}

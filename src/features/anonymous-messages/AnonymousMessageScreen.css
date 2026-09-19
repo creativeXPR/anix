@@ -1,0 +1,79 @@
+.anon-message {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  /* Explicit, not inherited — see the identical note in
+     ChatRoomScreen.css: a themed endpoint overrides --bg on this
+     element, which needs its own background rule to actually show it. */
+  background: var(--bg);
+  color: var(--text);
+}
+
+.anon-message__header {
+  flex-shrink: 0;
+}
+
+.anon-message__banner {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.anon-message__banner--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, var(--accent-bg), var(--bg) 70%);
+}
+
+.anon-message__logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  object-fit: cover;
+}
+
+.anon-message__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.anon-message__body h1 {
+  font-size: 26px;
+}
+
+.anon-message__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.anon-message__form textarea {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-h);
+  font: inherit;
+  resize: vertical;
+  min-height: 120px;
+}
+
+@media (min-width: 600px) {
+  .anon-message__banner {
+    height: 280px;
+  }
+
+  .anon-message__body {
+    padding: 48px 24px;
+  }
+}

@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// Same room-scoped model as firestore.rules. anix/ prefix because this
+// bucket is shared with other apps under the same Firebase project.
+// Banner-upload ownership is enforced at the Firestore layer (only the
+// room/endpoint's owner can set `bannerImageUrl` on its doc) — these
+// rules just cap size/type, not by who's uploading, to avoid a fragile
+// cross-service ownership check against a named (non-default) Firestore
+// database from Storage rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /anix/rooms/{roomId}/images/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow delete: if false;
+    }
+
+    match /anix/rooms/{roomId}/banner/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow delete: if false;
+    }
+
+    match /anix/endpoints/{endpointId}/banner/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow delete: if false;
+    }
+  }
+}
