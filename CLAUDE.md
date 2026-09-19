@@ -852,3 +852,104 @@ app, not by re-reasoning about the code:
   present at `opacity: 0.6`; `curl` on `/` confirms `og:image` is
   `/banner.png` (200, ~515KB) and `twitter:card` is
   `summary_large_image`.
+
+## Admin dashboard + more UX polish (2026-09-19)
+
+- **Admin page** (`src/features/admin/AdminApp.jsx`, route `/admin`,
+  outside `AppShellLayout`/`RequireAuth`): a passcode-gated dashboard for
+  viewing `reports` and `feedback`, mirroring Anime-space's own
+  `AdminApp.jsx` pattern exactly (same file structure, same rules
+  design) rather than inventing a new one. No real Anix account is
+  required — a visitor with no session is signed in anonymously purely
+  to get a `request.auth.uid` the rules can scope an unlock doc to;
+  "logging in" is nothing but a Firestore write (`adminUnlocks/{uid}`)
+  succeeding, and the rule backing that write rejects it outright unless
+  the submitted `passcode` field equals `admin/gate`'s real value — so
+  the actual passcode is checked **server-side** and never ships in the
+  JS bundle. `admin/gate` itself is `allow read, write: if false` for
+  every client; it can only be set via the Admin SDK. **Real reports**
+  live nested per-room (`rooms/{roomId}/reports/{reportId}`) — the
+  dashboard lists all of them at once via a Firestore **collection-group
+  query** (`collectionGroup(db, 'reports')`), backed by a matching
+  `match /{path=**}/reports/{reportId}` rules block (additive with the
+  existing per-room `create` rule, not a replacement of it — Firestore
+  ORs every rule block whose path matches a given request).
+  **Bootstrapping the real passcode**: since `admin/gate` is
+  unreadable/unwritable by design, seeding it required a *temporary*
+  onCall-adjacent `onRequest` function (`seedAdminGate`, guarded by its
+  own one-time secret read from a gitignored `functions/.env`, unrelated
+  to the admin passcode itself) — deployed, called once via its URL,
+  then the export and `.env` were deleted and the function removed
+  live via `firebase functions:delete seedAdminGate --region
+  us-central1 --force` (a plain `firebase deploy --only functions
+  --force` was refused by this session's own safety tooling as too
+  broad a bypass; the scoped `functions:delete` for exactly the one
+  function was fine). **Known gap, needs a manual one-time fix**: the
+  `c-xpr25` Firebase project doesn't have the **Anonymous** sign-in
+  provider enabled yet, so `/admin` currently hangs forever on its
+  loading spinner (`signInAnonymously` throws
+  `auth/admin-restricted-operation`, caught and only logged, not
+  surfaced in the UI). Fix: Firebase Console → Authentication → Sign-in
+  method → enable **Anonymous** (one toggle, no code/deploy needed).
+  Not fixable from the CLI/Admin SDK used elsewhere in this project —
+  needs the console UI (or the Identity Platform Admin API with a scope
+  this session doesn't have configured).
+- **Install prompt bug**: dismissing ("Not now") persisted in
+  `localStorage` for a full week (`DISMISS_COOLDOWN_MS`), so refreshing
+  never brought it back — not what was wanted ("should show again when
+  the user refreshes"). Rebuilt as `InstallCard` (replaces
+  `InstallPrompt`), backed by a new `install-context.jsx`/
+  `install-store.js` pair (split the same way `auth-context.jsx`/
+  `auth-store.js` already are, to satisfy the fast-refresh lint rule
+  against a file exporting both a component and a hook) so the
+  `beforeinstallprompt` capture happens once at the app root and is
+  shared by every consumer. The floating popup's "Not now" is now pure
+  component state (no persistence at all) — a refresh always re-evaluates
+  against a fresh event, fixing the bug structurally rather than tuning
+  the cooldown. **Also added**: the same card, non-floating and
+  non-dismissible, permanently on Profile right after the greeting —
+  so there's always a way to install even after dismissing the popup
+  once. One component (`InstallCard`, a `floating`/`dismissible` prop
+  pair), two looks (`.install-card` base + `.install-card--floating`
+  modifier for the fixed-position popup only).
+- **Reply snapshot didn't show the original's image**: replying to an
+  image-only message (no caption) showed a blank reply strip — the
+  Firestore `replyTo` snapshot written in `sendMessage()`
+  (`messages.js`) only ever kept `{id, text, senderId}`, dropping
+  `imageUrl` entirely. Added it to the snapshot, rendered a small
+  thumbnail in both `MessageBubble`'s reply strip and `Composer`'s
+  reply-preview banner (restructured the strip from a column to a
+  row — thumbnail + a text column — since it previously had no image
+  slot at all), with the fallback label `"Photo"` when there's no text
+  to show alongside it.
+- **Bottom nav had zero visual gap above it**: the fixed nav's
+  `padding-bottom` compensation on `.page__content` was exactly the
+  nav's own height (60px) — enough to not be *covered*, but the last
+  card touched it edge-to-edge. Added 16px on top:
+  `calc(60px + 16px + env(safe-area-inset-bottom))`.
+- **Home's header could scroll away**: unlike the bottom nav (already
+  `position: fixed`), `.page__header` was a normal flex-shrink:0 sibling
+  — structurally it shouldn't have been scrollable, but wasn't literally
+  pinned to the viewport either. Made Home's header specifically (the
+  only one with the app logo, via `Page`'s `brand` prop → a new
+  `page__header--fixed`/`page__content--fixed-header` class pair, not
+  a blanket change to Chats/Profile's plain text-only headers, which
+  weren't reported as an issue) `position: fixed` too, scoped per nav
+  orientation in `AppShell.css` since the fixed header's `left` offset
+  differs between the bottom-nav (mobile/tablet, `left: 0`) and rail
+  (desktop, `left: 76px` — past the rail's own width) layouts, with a
+  matching `padding-top` compensation on `.page__content` (65px mobile/
+  tablet, 73px desktop — measured from the header's actual padding+logo
+  height, same approach as the nav's own 60px constant).
+- Verified live against production after deploy (fresh Playwright,
+  zero console errors): root `og:image` still `/banner.png`; Home's
+  header computed `position: fixed`; Home's content `padding-bottom`
+  is `76px` (60+16); a synthetic `beforeinstallprompt` event renders
+  `InstallCard` correctly both on Profile and as the floating popup at
+  once (real popup verification blocked in headless Chromium, which
+  doesn't fire the real event the same way installable Chrome does);
+  replying to an image-only message shows the thumbnail in both the
+  composer's reply preview and the sent bubble's reply strip. `/admin`
+  itself verified only up to the known Anonymous-auth gap above — the
+  passcode gate/dashboard UI and rules couldn't be exercised
+  end-to-end until that's enabled.

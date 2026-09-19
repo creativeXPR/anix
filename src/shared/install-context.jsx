@@ -1,6 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-
-const InstallContext = createContext({ canInstall: false, promptInstall: async () => {} })
+import { useCallback, useEffect, useState } from 'react'
+import { InstallContext } from './install-store.js'
 
 // Captured once at the app root so both the floating popup (App.jsx)
 // and the persistent card on Profile can react to the same underlying
@@ -40,8 +39,4 @@ export function InstallProvider({ children }) {
       {children}
     </InstallContext.Provider>
   )
-}
-
-export function useInstall() {
-  return useContext(InstallContext)
 }

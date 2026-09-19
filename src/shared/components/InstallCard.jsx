@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useInstall } from '../install-context.jsx'
+import { useInstall } from '../install-store.js'
 import Button from './Button.jsx'
 import './InstallCard.css'
 

@@ -28,5 +28,8 @@ export function themeStyleVars(themeColor) {
     '--panel': `color-mix(in srgb, ${themeColor} 16%, ${BASE})`,
     '--panel-alt': `color-mix(in srgb, ${themeColor} 24%, ${BASE})`,
     '--border': `color-mix(in srgb, ${themeColor} 36%, ${BASE})`,
+    '--text': '#f3edf7',
+    '--text-h': '#ffffff',
+    '--text-muted': '#c9bfce',
   }
 }
