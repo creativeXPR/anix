@@ -19,6 +19,7 @@ import CardSkeleton from '../../shared/components/CardSkeleton.jsx'
 import CreateLinkModal from '../../shared/components/CreateLinkModal.jsx'
 import LinkCard from '../../shared/components/LinkCard.jsx'
 import Page from '../../shared/components/Page.jsx'
+import NotificationPrompt from './NotificationPrompt.jsx'
 import { useAuthUser } from '../../shared/auth-store.js'
 import { uploadBanner } from '../../shared/upload-banner.js'
 import { getTimeGreeting } from '../../shared/utils/greetings.js'
@@ -152,6 +153,8 @@ export default function HomeScreen() {
           onClose={() => setCreating(null)}
         />
       )}
+
+      <NotificationPrompt />
     </Page>
   )
 }

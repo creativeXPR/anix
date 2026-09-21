@@ -4,6 +4,7 @@ import { useAuthUser } from '../../shared/auth-store.js'
 import Button from '../../shared/components/Button.jsx'
 import Card from '../../shared/components/Card.jsx'
 import InstallCard from '../../shared/components/InstallCard.jsx'
+import NotificationToggle from '../../shared/components/NotificationToggle.jsx'
 import Page from '../../shared/components/Page.jsx'
 import ThemeToggle from '../../shared/components/ThemeToggle.jsx'
 import { getFirebaseAuth } from '../../shared/firebase.js'
@@ -72,6 +73,10 @@ export default function ProfileScreen() {
       <div className="profile-screen__section">
         <span className="text-b3">Appearance</span>
         <ThemeToggle />
+      </div>
+
+      <div className="profile-screen__section">
+        <NotificationToggle />
       </div>
 
       <form className="profile-screen__section" onSubmit={handleFeedbackSubmit}>

@@ -103,6 +103,14 @@ service cloud.firestore {
       }
     }
 
+    // #006 push notifications (2026-09-21): fcmTokens lives here, owner-
+    // only — a real account is required to receive a push at all (an
+    // anonymous room/endpoint visitor has no account/token to attach
+    // one to), so pushes only ever reach a room/endpoint's *owner*.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
     // Create-only from any signed-in user; read via the admin dashboard
     // (isUnlockedAdmin) or the Firebase console, never by a regular
     // client.

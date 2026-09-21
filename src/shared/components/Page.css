@@ -16,7 +16,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0px solid var(--border);
   flex-shrink: 0;
 }
 

@@ -2,9 +2,11 @@ const fs = require('fs')
 const path = require('path')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https')
+const { onDocumentCreated } = require('firebase-functions/v2/firestore')
 const { initializeApp } = require('firebase-admin/app')
 const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 const { getStorage } = require('firebase-admin/storage')
+const { getMessaging } = require('firebase-admin/messaging')
 
 const app = initializeApp()
 // Same named database as the client (src/shared/firebase.js) — see CLAUDE.md #008.
@@ -144,6 +146,57 @@ exports.deleteMessageEndpoint = onCall(async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.')
   await deleteHandleDoc('messageEndpoints', request.auth.uid, request.data.id, ['messages'])
   return { ok: true }
+})
+
+// --- Push notifications (#006, 2026-09-21) ---
+//
+// Only a room/endpoint's *owner* can ever receive a push — they're the
+// only party with a real account (fcmTokens live on users/{uid}); an
+// anonymous room participant or message sender has no account to
+// attach a token to, so "notify the other person when your message
+// gets a reply" isn't possible here, only "notify the owner."
+async function sendToOwner(ownerId, notification) {
+  const userSnap = await db.doc(`users/${ownerId}`).get()
+  const tokens = userSnap.data()?.fcmTokens || []
+  if (!tokens.length) return
+
+  const response = await getMessaging().sendEachForMulticast({ tokens, notification })
+  const deadTokens = response.responses
+    .map((result, i) => (result.success ? null : tokens[i]))
+    .filter(Boolean)
+  if (deadTokens.length) {
+    await db.doc(`users/${ownerId}`).update({ fcmTokens: FieldValue.arrayRemove(...deadTokens) })
+  }
+}
+
+exports.onEndpointMessage = onDocumentCreated(
+  'messageEndpoints/{endpointId}/messages/{messageId}',
+  async (event) => {
+    const endpoint = (await db.doc(`messageEndpoints/${event.params.endpointId}`).get()).data()
+    if (!endpoint?.ownerId) return
+    await sendToOwner(endpoint.ownerId, {
+      title: 'New anonymous message',
+      body: `Someone sent you a message on ${endpoint.handle}.`,
+    })
+  },
+)
+
+exports.onRoomMessage = onDocumentCreated('rooms/{roomId}/messages/{messageId}', async (event) => {
+  const room = (await db.doc(`rooms/${event.params.roomId}`).get()).data()
+  if (!room?.ownerId) return
+  await sendToOwner(room.ownerId, {
+    title: 'New activity in your room',
+    body: `New message in ${room.handle}.`,
+  })
+})
+
+exports.onRoomReport = onDocumentCreated('rooms/{roomId}/reports/{reportId}', async (event) => {
+  const room = (await db.doc(`rooms/${event.params.roomId}`).get()).data()
+  if (!room?.ownerId) return
+  await sendToOwner(room.ownerId, {
+    title: 'A message was reported',
+    body: `Someone flagged a message in ${room.handle}.`,
+  })
 })
 
 // --- Scheduled hygiene ---
