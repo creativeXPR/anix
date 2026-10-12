@@ -193,3 +193,15 @@
   background: var(--danger);
   color: #ffffff;
 }
+
+/* Sender "browser pattern" (SenderPattern.jsx) */
+.admin-pattern {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--panel-alt);
+  color: var(--text-h);
+  font-size: 12px;
+  font-weight: 600;
+}

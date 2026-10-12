@@ -138,11 +138,11 @@ export function canSendNow() {
   return Date.now() - lastSentAt >= MIN_SEND_INTERVAL_MS
 }
 
-export async function sendMessage({ roomId, senderId, text, replyTo, imageFile }) {
+export async function sendMessage({ roomId, senderId, text, replyTo, imageFile, onProgress = () => {} }) {
   if (!canSendNow()) return
   lastSentAt = Date.now()
 
-  const imageUrl = imageFile ? await uploadRoomImage(roomId, imageFile) : null
+  const imageUrl = imageFile ? await uploadRoomImage(roomId, imageFile, onProgress) : null
 
   await addDoc(messagesRef(roomId), {
     text: text.trim(),
@@ -165,9 +165,13 @@ export async function sendMessage({ roomId, senderId, text, replyTo, imageFile }
   )
 }
 
-export async function reportMessage(roomId, messageId, reporterId) {
+// A copy of the text and the poster's guest id travel with the report so
+// /admin can judge it and see that guest's other messages in the room.
+export async function reportMessage(roomId, message, reporterId) {
   await addDoc(collection(db, 'rooms', roomId, 'reports'), {
-    messageId,
+    messageId: message.id,
+    text: String(message.text || (message.imageUrl ? '[image]' : '')).slice(0, 1000),
+    senderId: message.senderId || null,
     reporterId,
     createdAt: serverTimestamp(),
   })

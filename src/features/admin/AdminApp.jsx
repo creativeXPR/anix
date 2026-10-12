@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import {
   collection,
-  collectionGroup,
   doc,
   getDoc,
   onSnapshot,
@@ -14,6 +13,7 @@ import {
 import { db, getFirebaseAuth } from '../../shared/firebase.js'
 import Spinner from '../../shared/components/Spinner.jsx'
 import ModerationQueue from './ModerationQueue.jsx'
+import ReportsList from './ReportsList.jsx'
 import './AdminApp.css'
 
 // Feedback `kind` from Profile's "talk to us" sheet (older items have none).
@@ -123,32 +123,8 @@ function formatTimestamp(timestamp) {
 }
 
 function AdminDashboard() {
-  const [reports, setReports] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [contact, setContact] = useState(null)
-
-  useEffect(() => {
-    const q = query(collectionGroup(db, 'reports'), orderBy('createdAt', 'desc'))
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setReports(
-          snap.docs.map((d) => ({
-            id: d.id,
-            // rooms/{id}/reports, messageEndpoints/{id}/reports, threads/{id}/reports
-            parentKind: d.ref.parent.parent?.parent?.id ?? 'rooms',
-            parentId: d.ref.parent.parent?.id ?? '—',
-            ...d.data(),
-          })),
-        )
-      },
-      (err) => {
-        console.error('reports listen failed', err)
-        setReports([])
-      },
-    )
-    return unsub
-  }, [])
 
   useEffect(() => {
     const q = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'))
@@ -180,40 +156,7 @@ function AdminDashboard() {
     <div className="admin-shell admin-dashboard">
       <ModerationQueue />
 
-      <section>
-        <header className="admin-header">
-          <h1>Reports</h1>
-          <div className="admin-count">{reports === null ? '…' : `${reports.length} total`}</div>
-        </header>
-        {reports === null ? (
-          <div className="admin-loading">
-            <Spinner size={32} />
-          </div>
-        ) : reports.length === 0 ? (
-          <div className="admin-empty">No reports yet.</div>
-        ) : (
-          <div className="admin-list">
-            {reports.map((item) => (
-              <div key={item.id} className="admin-card">
-                <div className="admin-card__meta">
-                  <span>
-                    {item.parentKind === 'messageEndpoints'
-                      ? `🚩 link ${item.parentId}`
-                      : item.parentKind === 'threads'
-                        ? `🚩 private chat (by ${item.by})`
-                        : `Room ${item.parentId}`}
-                    {item.reason ? ` · ${item.reason}` : ''}
-                  </span>
-                  <span>{formatTimestamp(item.createdAt)}</span>
-                </div>
-                <p className="admin-card__text">
-                  {item.text || `Message ${item.messageId} · reported by guest ${item.reporterId}`}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <ReportsList />
 
       <section>
         <header className="admin-header">

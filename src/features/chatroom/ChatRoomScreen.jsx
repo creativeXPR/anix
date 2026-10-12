@@ -180,7 +180,7 @@ export default function ChatRoomScreen() {
   // gave zero feedback either way, which reads as "doesn't do anything."
   async function handleReport(message) {
     try {
-      await reportMessage(roomId, message.id, participantId)
+      await reportMessage(roomId, message, participantId)
       showToast('Reported — thanks for flagging it', 'success')
     } catch (err) {
       showToast(err.message, 'error')
@@ -227,11 +227,22 @@ export default function ChatRoomScreen() {
           : null,
         createdAt: { toMillis: () => Date.now() },
         pending: true,
+        // images report real upload progress; text sends don't (null →
+        // the ring eases toward full while waiting)
+        progress: imageFile ? 0 : null,
       },
     ])
 
     try {
-      await sendMessage({ roomId, senderId: participantId, text, replyTo: activeReplyTo, imageFile })
+      await sendMessage({
+        roomId,
+        senderId: participantId,
+        text,
+        replyTo: activeReplyTo,
+        imageFile,
+        onProgress: (progress) =>
+          setPendingMessages((current) => current.map((m) => (m.id === tempId ? { ...m, progress } : m))),
+      })
     } finally {
       setPendingMessages((current) => current.filter((message) => message.id !== tempId))
       if (localImageUrl) URL.revokeObjectURL(localImageUrl)

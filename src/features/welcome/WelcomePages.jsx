@@ -72,8 +72,9 @@ export function SafetyPage() {
       <h2>anonymous isn&apos;t untraceable</h2>
       <p>
         We don&apos;t show identities to users, but threats, harassment, hate, sexual content involving minors, or anything
-        illegal isn&apos;t protected by anonymity. We act on reports and may cooperate with law enforcement where the law
-        requires it.
+        illegal isn&apos;t protected by anonymity. Like any website, our servers keep short-lived technical logs
+        (including IP addresses, for 30 days — see our <Link to="/welcome/privacy">Privacy Policy</Link>). We act on
+        reports and may cooperate with law enforcement where the law requires it.
       </p>
       <h2>tips</h2>
       <ul>
@@ -276,6 +277,14 @@ export function PrivacyPage() {
         moderation service, which scores it for things like insults, threats or sexual content. We store the result
         with the message. Messages that look harmful are hidden from the inbox (the recipient can choose to view them)
         and may be read by our team for review, as can reported content.
+      </p>
+      <h2>technical logs</h2>
+      <p>
+        When you send an anonymous message or a private reply, our hosting provider (Google Cloud) automatically records
+        a technical log of the request: your IP address, your browser and device type, and the time. These logs are kept
+        for 30 days and then deleted. They aren&apos;t shown to anyone on Anix and aren&apos;t attached to your message;
+        we use them only to keep the service secure, to investigate serious abuse, and to respond to valid legal
+        requests.
       </p>
       <h2>how long we keep it</h2>
       <ul>

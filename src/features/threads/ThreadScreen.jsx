@@ -6,6 +6,7 @@ import Button from '../../shared/components/Button.jsx'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import MessageCard from '../../shared/components/MessageCard.jsx'
 import ReportSheet from '../../shared/components/ReportSheet.jsx'
+import SendStatus from '../../shared/components/SendStatus.jsx'
 import Sheet from '../../shared/components/Sheet.jsx'
 import ArrowRightIcon from '../../shared/icons/ArrowRightIcon.jsx'
 import BackIcon from '../../shared/icons/BackIcon.jsx'
@@ -73,6 +74,18 @@ export default function ThreadScreen() {
   }, [messages?.length, pending.length])
 
   const ended = thread?.status === 'ended'
+
+  // ✓✓ "seen": the other side has replied after this message, or opened
+  // the chat since your last message (their unread flag is cleared).
+  // A filtered message never gets ✓✓ — the other side wasn't shown it.
+  // Only when the link owner turned read receipts on (Profile, off by
+  // default) — both sides then see it, like WhatsApp; otherwise just ✓.
+  const otherUnread = side === 'owner' ? thread?.senderUnread : thread?.ownerUnread
+  const lastOtherAt = Math.max(0, ...(messages || []).filter((m) => m.from !== side).map((m) => m.createdAt?.toMillis?.() ?? 0))
+  const isSeen = (m) =>
+    thread?.receipts === true &&
+    !m.filtered &&
+    ((m.createdAt?.toMillis?.() ?? Infinity) < lastOtherAt || (thread?.lastFrom === side && otherUnread === false))
 
   async function handleSend() {
     if (!text.trim() || ended) return
@@ -181,7 +194,10 @@ export default function ThreadScreen() {
                       </button>
                     ) : (
                       <div className={`bubble ${mine ? 'bubble--own' : 'bubble--other'}`}>
-                        <p className="bubble__text">{message.text}</p>
+                        <p className="bubble__text">
+                          {message.text}
+                          {mine && <SendStatus state={isSeen(message) ? 'seen' : 'sent'} />}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -194,7 +210,10 @@ export default function ThreadScreen() {
                 <div key={p.id} className="bubble-row bubble-row--own bubble-row--pending">
                   <div className="bubble-wrap">
                     <div className="bubble bubble--own">
-                      <p className="bubble__text">{p.text}</p>
+                      <p className="bubble__text">
+                        {p.text}
+                        <SendStatus state="sending" />
+                      </p>
                     </div>
                   </div>
                 </div>

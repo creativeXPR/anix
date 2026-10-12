@@ -1,0 +1,79 @@
+/* Delivery mark inside your own (gradient) bubble — sits at the end of
+   the text like WhatsApp's ticks. */
+.send-status {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  vertical-align: -2px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.send-status svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.send-status--sent svg,
+.send-status--seen svg {
+  width: 17px;
+  height: 12px;
+  stroke-width: 1.8;
+}
+
+/* ✓✓ seen: brighter, like WhatsApp's blue ticks (white reads best on the
+   gradient bubble) */
+.send-status--seen {
+  color: #ffffff;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.6));
+}
+
+.send-status--sending svg {
+  transform: rotate(-90deg);
+}
+
+.send-status__track {
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 2.2;
+}
+
+.send-status__fill {
+  stroke: #ffffff;
+  stroke-width: 2.2;
+  transition: stroke-dashoffset 0.25s ease;
+}
+
+/* No measurable progress: ease toward ~90% and wait there, slowly
+   breathing, until the send resolves. */
+.send-status.is-indeterminate .send-status__fill {
+  animation: send-status-ease 3.2s cubic-bezier(0.15, 0.7, 0.2, 1) forwards, send-status-breathe 1.2s ease-in-out 3.2s infinite;
+}
+
+@keyframes send-status-ease {
+  from {
+    stroke-dashoffset: 37.7; /* 2πr, r = 6 → empty */
+  }
+  to {
+    stroke-dashoffset: 3.8; /* ≈90% full */
+  }
+}
+
+@keyframes send-status-breathe {
+  0%,
+  100% {
+    stroke-dashoffset: 3.8;
+  }
+  50% {
+    stroke-dashoffset: 7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .send-status.is-indeterminate .send-status__fill {
+    animation: none;
+    stroke-dashoffset: 9.4;
+  }
+}

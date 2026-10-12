@@ -4,6 +4,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -12,6 +13,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, sendFunctions } from '../../shared/firebase.js'
@@ -128,6 +130,7 @@ export async function openThread({ endpoint, message, ownerId }) {
   const ref = threadRef(message.threadId)
   const existing = await getDoc(ref)
   if (existing.exists()) return message.threadId
+  const owner = await getDoc(doc(db, 'users', ownerId)).catch(() => null)
   await setDoc(ref, {
     ownerId,
     endpointId: endpoint.id,
@@ -140,6 +143,9 @@ export async function openThread({ endpoint, message, ownerId }) {
     ownerUnread: false,
     senderUnread: false,
     lastFrom: null,
+    // ✓✓ "seen" in this chat — the owner's Profile setting, copied here
+    // because senders can't read the owner's users/ doc
+    receipts: owner?.data()?.readReceipts === true,
     createdAt: serverTimestamp(),
     lastActivityAt: serverTimestamp(),
   })
@@ -164,6 +170,18 @@ export async function reportThread(threadId, { messageId = null, text = '', reas
     by,
     createdAt: serverTimestamp(),
   })
+}
+
+// Profile "read receipts" switch: saved on the owner's users/ doc and
+// copied onto every thread they own (that's what both sides read).
+export async function setReadReceipts(uid, enabled) {
+  await setDoc(doc(db, 'users', uid), { readReceipts: enabled }, { merge: true })
+  const owned = await getDocs(query(collection(db, 'threads'), where('ownerId', '==', uid)))
+  for (let i = 0; i < owned.docs.length; i += 400) {
+    const batch = writeBatch(db)
+    owned.docs.slice(i, i + 400).forEach((d) => batch.update(d.ref, { receipts: enabled }))
+    await batch.commit()
+  }
 }
 
 export async function markThreadSeen(threadId, side) {

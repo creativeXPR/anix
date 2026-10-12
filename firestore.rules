@@ -65,7 +65,10 @@ service cloud.firestore {
       // no direct client create.
       allow create: if false;
       allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid)
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt']);
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt'])
+        // the admin dashboard may close a reported room
+        || (isUnlockedAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status == 'closed');
       // No client-side delete — goes through the deleteRoom Cloud
       // Function so subcollections/Storage banner get cleaned up too.
       allow delete: if false;
@@ -169,8 +172,9 @@ service cloud.firestore {
       // or marks their side seen; the sender marks their side seen.
       allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'ownerUnread', 'lastActivityAt'])
-          && request.resource.data.status in ['open', 'ended'])
+            .hasOnly(['status', 'ownerUnread', 'lastActivityAt', 'receipts'])
+          && request.resource.data.status in ['open', 'ended']
+          && request.resource.data.get('receipts', false) is bool)
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['senderUnread'])
           && request.resource.data.senderUnread == false);
       allow delete: if false;

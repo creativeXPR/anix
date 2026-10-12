@@ -5,6 +5,7 @@ import Button from '../../shared/components/Button.jsx'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import NotificationToggle from '../../shared/components/NotificationToggle.jsx'
 import Page from '../../shared/components/Page.jsx'
+import ReadReceiptsToggle from '../../shared/components/ReadReceiptsToggle.jsx'
 import Sheet from '../../shared/components/Sheet.jsx'
 import SoundToggle from '../../shared/components/SoundToggle.jsx'
 import ThemeToggle from '../../shared/components/ThemeToggle.jsx'
@@ -59,6 +60,7 @@ export default function ProfileScreen() {
         <ThemeToggle />
         <NotificationToggle />
         <SoundToggle />
+        <ReadReceiptsToggle />
         {canInstall && (
           <div className="settings-row">
             <span className="settings-row__emoji" aria-hidden="true">

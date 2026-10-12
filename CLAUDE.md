@@ -1279,3 +1279,30 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
 - c-xpr25 also hosts MulTeam's functions (codebase "multeam",
   europe-west1, nodejs22). Anix deploys are codebase "default", so
   `--force` here never deletes them.
+
+## Sender pattern, reports & send status (2026-10-12)
+- **Request logs disclosed**: Privacy ("technical logs") + Safety say Google
+  Cloud keeps IP / browser / time per send for 30 days; not shown to users,
+  used only for security, abuse and legal requests.
+- **Browser pattern in /admin** (SenderPattern.jsx + sender-source.js):
+  every moderation/report card resolves its sender — link messages by
+  `senderKey` (short `browser xxxxxx` tag + counts of messages / filtered
+  messages from that browser to that link), room messages by guest
+  `senderId`, owner replies shown as "the link owner — not anonymous".
+  No IPs in the app, ever.
+- **Reports** (ReportsList.jsx): collection-group `reports`; room reports now
+  store `text` (≤1000, `[image]` for images) + `senderId`. Actions (all
+  behind ConfirmDialog): Block sender, Close room (rules: unlocked admin may
+  set rooms `status: 'closed'` only), Delete message.
+- **Send status** (shared/components/SendStatus.jsx): WhatsApp-style mark at
+  the end of your own bubble. Pending → ring that fills; room image sends
+  report real progress (compression 0–20%, `uploadBytesResumable` 20–95%),
+  text sends ease toward ~90% (one request, nothing measurable). Then ✓;
+  private chats show ✓✓ "seen" when the other side replied later or their
+  unread flag was cleared after your last message. Filtered messages never
+  get ✓✓.
+- **Read receipts are opt-in** (Profile → "read receipts", off by default):
+  saved as users/{uid}.readReceipts and copied to each owned thread as
+  `receipts` (senders can't read users/). ✓✓ shows only when
+  `thread.receipts` is true — for both sides, WhatsApp-style; otherwise
+  just ✓. Rooms only ever show ✓.

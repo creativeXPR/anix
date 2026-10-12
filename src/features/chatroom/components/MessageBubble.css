@@ -177,8 +177,14 @@
    message once Firestore confirms it — not tappable meanwhile, since
    reply/report/copy on a not-yet-real message don't make sense. */
 .bubble-row--pending .bubble {
-  opacity: 0.5;
+  opacity: 0.72;
   cursor: default;
+}
+
+/* image-only own message: the delivery mark sits under the image */
+.bubble__meta {
+  display: flex;
+  justify-content: flex-end;
 }
 
 @media (prefers-reduced-motion: reduce) {

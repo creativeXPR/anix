@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import SendStatus from '../../../shared/components/SendStatus.jsx'
 import { useToast } from '../../../shared/toast-store.js'
 import { colorForParticipant } from '../../../shared/utils/participant-color.js'
 import { hostnameFor, splitTextAndLinks } from '../linkify.js'
@@ -124,7 +125,13 @@ export default function MessageBubble({
                   <span key={index}>{segment.value}</span>
                 ),
               )}
+              {isOwn && <SendStatus state={pending ? 'sending' : 'sent'} progress={message.progress} />}
             </p>
+          )}
+          {isOwn && !message.text && (
+            <span className="bubble__meta">
+              <SendStatus state={pending ? 'sending' : 'sent'} progress={message.progress} />
+            </span>
           )}
         </button>
       </div>

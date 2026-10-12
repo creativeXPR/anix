@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import Spinner from '../../shared/components/Spinner.jsx'
 import { db } from '../../shared/firebase.js'
+import { ResolvedSender } from './SenderPattern.jsx'
 
 // Moderation queue (2026-10-12): messages the automated filter hid
 // (`filtered`) or couldn't check (`moderation.unchecked`), across every
@@ -110,6 +111,7 @@ export default function ModerationQueue() {
                   ))}
                 </p>
               )}
+              <ResolvedSender target={{ where: item.where, parentId: item.parentId, message: item }} />
               <div className="admin-card__actions">
                 <button type="button" onClick={() => setConfirm({ action: 'block', item })}>
                   Block sender
