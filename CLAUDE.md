@@ -1364,3 +1364,14 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   header (shared/version.js).
 - Service worker: removed the no-op fetch handler (Chrome warning; not
   needed for installability anymore).
+
+## Answer & share carries the link (2026-10-13)
+- The share image (message-image.js) draws a white "send me anonymous
+  messages 👀 / anix.web.app/m/{code}" pill above the wordmark; long
+  message/answer text is clipped with "…" (`clip()`) so it never reaches
+  the pill.
+- MessageSheet `shareImage`: navigator.share with files + text
+  ("send me anonymous messages 👀 {link}"), falling back to files only;
+  the link is also copied to the clipboard (story apps drop shared text →
+  link sticker). Desktop fallback copies the image with the link as its
+  text/plain form, else downloads + copies the link.

@@ -74,7 +74,16 @@ function drawImageCover(ctx, img, x, y, width, height) {
   ctx.drawImage(img, sx, sy, sw, sh, x, y, width, height)
 }
 
-async function draw({ text, header, colors, answer, bannerImageUrl }) {
+// Cut wrapped lines to `max` (in place), ending the last kept line with
+// "…" when anything was dropped.
+function clip(lines, max) {
+  if (lines.length <= max) return lines
+  lines.length = max
+  lines[max - 1] = `${lines[max - 1].replace(/[\s.,…]+$/, '')}…`
+  return lines
+}
+
+async function draw({ text, header, colors, answer, bannerImageUrl, link }) {
   await document.fonts.ready
 
   const canvas = document.createElement('canvas')
@@ -109,18 +118,24 @@ async function draw({ text, header, colors, answer, bannerImageUrl }) {
   const headerHeight = headerLines.length * 42 + 60
 
   ctx.font = bodyFont
-  const lines = wrapText(ctx, text, cardWidth - bodyPaddingX * 2).slice(0, answer ? 7 : MAX_LINES)
-  const bodyHeight = lines.length * lineHeight + bodyPaddingY * 2
-  const cardHeight = headerHeight + bodyHeight
+  const lines = clip(wrapText(ctx, text, cardWidth - bodyPaddingX * 2), answer ? 7 : MAX_LINES)
 
   ctx.font = `800 52px ${DISPLAY_FONT}`
-  const answerLines = answer ? wrapText(ctx, answer, WIDTH - 120).slice(0, 5) : []
-  const answerHeight = answerLines.length ? 56 + answerLines.length * 60 : 0
+  const answerLines = answer ? clip(wrapText(ctx, answer, WIDTH - 120), 5) : []
 
   const avatarSize = bannerImg ? 120 : 0
   const avatarGap = bannerImg ? 32 : 0
-  const groupHeight = avatarSize + avatarGap + cardHeight + answerHeight
-  const groupTop = Math.max(70, (HEIGHT - 130 - groupHeight) / 2)
+  // With a link pill the bottom needs more room (pill + wordmark); trim
+  // the longest content (answer lines, then message lines) so nothing
+  // ever overlaps it.
+  const bottomReserve = link ? 260 : 130
+  const available = HEIGHT - bottomReserve - 70
+  const measure = () =>
+    avatarSize + avatarGap + headerHeight + lines.length * lineHeight + bodyPaddingY * 2 + (answerLines.length ? 104 + answerLines.length * 60 : 0)
+  while (measure() > available && answerLines.length > 2) clip(answerLines, answerLines.length - 1)
+  while (measure() > available && lines.length > 3) clip(lines, lines.length - 1)
+  const groupHeight = measure()
+  const groupTop = Math.max(70, (HEIGHT - bottomReserve - groupHeight) / 2)
 
   if (bannerImg) {
     const avatarX = (WIDTH - avatarSize) / 2
@@ -135,6 +150,7 @@ async function draw({ text, header, colors, answer, bannerImageUrl }) {
   }
 
   const cardY = groupTop + avatarSize + avatarGap
+  const cardHeight = headerHeight + lines.length * lineHeight + bodyPaddingY * 2
 
   // Soft drop shadow under the card.
   ctx.save()
@@ -196,6 +212,32 @@ async function draw({ text, header, colors, answer, bannerImageUrl }) {
     ctx.shadowBlur = 0
   }
 
+  // "send me anonymous messages" pill with the owner's link, so whoever
+  // sees the story/screenshot can find the link and send one too.
+  if (link) {
+    const pillY = HEIGHT - 205
+    const pillH = 96
+    ctx.textAlign = 'center'
+    ctx.font = `800 34px ${DISPLAY_FONT}`
+    const linkWidth = ctx.measureText(link).width
+    const pillW = Math.min(WIDTH - 80, Math.max(440, linkWidth + 80))
+    const pillX = (WIDTH - pillW) / 2
+    ctx.save()
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.2)'
+    ctx.shadowBlur = 30
+    ctx.shadowOffsetY = 10
+    roundRect(ctx, pillX, pillY - pillH / 2, pillW, pillH, pillH / 2)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.restore()
+    ctx.fillStyle = '#6b5a7e'
+    ctx.font = '600 22px Poppins, sans-serif'
+    ctx.fillText('send me anonymous messages 👀', centerX, pillY - 18)
+    ctx.fillStyle = '#7b1fd4'
+    ctx.font = `800 34px ${DISPLAY_FONT}`
+    ctx.fillText(link, centerX, pillY + 20, pillW - 40)
+  }
+
   // Branding at the bottom: logo + wordmark.
   const brandY = HEIGHT - 90
   ctx.font = `800 36px ${DISPLAY_FONT}`
@@ -221,8 +263,8 @@ async function draw({ text, header, colors, answer, bannerImageUrl }) {
 // Story-sized PNG of a received message. `header`/`colors` come from the
 // message's game (see games.js headerOf/gameOf); `answer` (optional) adds
 // the owner's reply under the card.
-export async function generateMessageImageBlob({ text, header, colors, answer, bannerImageUrl }) {
-  const canvas = await draw({ text, header, colors, answer, bannerImageUrl })
+export async function generateMessageImageBlob({ text, header, colors, answer, bannerImageUrl, link }) {
+  const canvas = await draw({ text, header, colors, answer, bannerImageUrl, link })
 
   try {
     return await new Promise((resolve, reject) => {
@@ -234,7 +276,7 @@ export async function generateMessageImageBlob({ text, header, colors, answer, b
     // failing the whole share-image feature over one missing header.
     if (bannerImageUrl) {
       console.warn('Banner image blocked canvas export, retrying without it:', err)
-      return generateMessageImageBlob({ text, header, colors, answer })
+      return generateMessageImageBlob({ text, header, colors, answer, link })
     }
     throw err
   }
