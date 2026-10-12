@@ -12,6 +12,16 @@ const app = initializeApp()
 // Same named database as the client (src/shared/firebase.js) — see CLAUDE.md #008.
 const db = getFirestore(app, 'anix')
 
+// Firestore triggers must name the database AND sit in its region — a bare
+// onDocumentCreated('path') listens to the (default) database instead.
+// That's what Anix's push triggers did until 2026-10-12 (bound to
+// (default) in europe-west3, so they never fired for Anix data). The
+// `anix` database lives in europe-west1.
+const ANIX_DB = { database: 'anix', region: 'europe-west1' }
+function onAnixDocCreated(document, handler) {
+  return onDocumentCreated({ document, ...ANIX_DB }, handler)
+}
+
 const HANDLE_PATTERN = /^[a-z0-9][a-z0-9-]{2,23}$/
 const MAX_PER_TYPE = 3
 const STALE_MS = 5 * 60 * 1000
@@ -145,6 +155,20 @@ exports.deleteRoom = onCall(async (request) => {
 exports.deleteMessageEndpoint = onCall(async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.')
   await deleteHandleDoc('messageEndpoints', request.auth.uid, request.data.id, ['messages'])
+  // Phase 2: the link's private conversations (+ their push tokens) go too.
+  const threads = await db
+    .collection('threads')
+    .where('ownerId', '==', request.auth.uid)
+    .where('endpointId', '==', request.data.id)
+    .get()
+  for (const thread of threads.docs) {
+    const messages = await thread.ref.collection('messages').get()
+    const batch = db.batch()
+    messages.docs.forEach((doc) => batch.delete(doc.ref))
+    batch.delete(db.doc(`threadPush/${thread.id}`))
+    batch.delete(thread.ref)
+    await batch.commit()
+  }
   return { ok: true }
 })
 
@@ -155,12 +179,13 @@ exports.deleteMessageEndpoint = onCall(async (request) => {
 // anonymous room participant or message sender has no account to
 // attach a token to, so "notify the other person when your message
 // gets a reply" isn't possible here, only "notify the owner."
-async function sendToOwner(ownerId, notification) {
+// `link` (app path) is opened when the notification is tapped (sw.js).
+async function sendToOwner(ownerId, notification, link = '/') {
   const userSnap = await db.doc(`users/${ownerId}`).get()
   const tokens = userSnap.data()?.fcmTokens || []
   if (!tokens.length) return
 
-  const response = await getMessaging().sendEachForMulticast({ tokens, notification })
+  const response = await getMessaging().sendEachForMulticast({ tokens, notification, data: { link } })
   const deadTokens = response.responses
     .map((result, i) => (result.success ? null : tokens[i]))
     .filter(Boolean)
@@ -169,7 +194,7 @@ async function sendToOwner(ownerId, notification) {
   }
 }
 
-exports.onEndpointMessage = onDocumentCreated(
+exports.onEndpointMessage = onAnixDocCreated(
   'messageEndpoints/{endpointId}/messages/{messageId}',
   async (event) => {
     const endpoint = (await db.doc(`messageEndpoints/${event.params.endpointId}`).get()).data()
@@ -181,11 +206,11 @@ exports.onEndpointMessage = onDocumentCreated(
       body: prompt
         ? `Someone answered "${prompt}" on ${endpoint.handle}.`
         : `Someone sent you a message on ${endpoint.handle}.`,
-    })
+    }, '/chats')
   },
 )
 
-exports.onRoomMessage = onDocumentCreated('rooms/{roomId}/messages/{messageId}', async (event) => {
+exports.onRoomMessage = onAnixDocCreated('rooms/{roomId}/messages/{messageId}', async (event) => {
   const room = (await db.doc(`rooms/${event.params.roomId}`).get()).data()
   if (!room?.ownerId) return
   await sendToOwner(room.ownerId, {
@@ -194,13 +219,47 @@ exports.onRoomMessage = onDocumentCreated('rooms/{roomId}/messages/{messageId}',
   })
 })
 
-exports.onRoomReport = onDocumentCreated('rooms/{roomId}/reports/{reportId}', async (event) => {
+exports.onRoomReport = onAnixDocCreated('rooms/{roomId}/reports/{reportId}', async (event) => {
   const room = (await db.doc(`rooms/${event.params.roomId}`).get()).data()
   if (!room?.ownerId) return
   await sendToOwner(room.ownerId, {
     title: 'A message was reported',
     body: `Someone flagged a message in ${room.handle}.`,
   })
+})
+
+// Phase 2 anonymous two-way reply: a sender's reply pushes the owner; an
+// owner's reply pushes the sender if they opted in ("notify me when they
+// reply" → threadPush/{threadId}, which no client can read).
+exports.onThreadMessage = onAnixDocCreated('threads/{threadId}/messages/{messageId}', async (event) => {
+  const message = event.data?.data()
+  const threadId = event.params.threadId
+  const thread = (await db.doc(`threads/${threadId}`).get()).data()
+  if (!message || !thread) return
+
+  if (message.from === 'sender') {
+    await sendToOwner(
+      thread.ownerId,
+      { title: 'New private reply 💬', body: `Someone replied to you on ${thread.handle}.` },
+      `/t/${threadId}`,
+    )
+    return
+  }
+
+  const pushRef = db.doc(`threadPush/${threadId}`)
+  const token = (await pushRef.get()).data()?.token
+  if (!token) return
+  try {
+    await getMessaging().send({
+      token,
+      notification: { title: 'They replied! 💌', body: `@${thread.handle} replied to your anonymous message.` },
+      data: { link: `/t/${threadId}` },
+    })
+  } catch (err) {
+    // Token expired/unregistered — forget it rather than retrying forever.
+    if (String(err?.code || '').includes('registration-token')) await pushRef.delete().catch(() => {})
+    else console.error('thread push failed', err)
+  }
 })
 
 // --- Scheduled hygiene ---

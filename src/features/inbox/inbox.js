@@ -51,15 +51,20 @@ function endpointMessagesRef(endpointId) {
 // read is owner-only). `game`/`prompt` snapshot what the sender was
 // answering (see shared/games.js); `read: false` makes it a sealed tile
 // in the owner's inbox. Messages from before this have no `read` field
-// and count as already read.
-export async function sendAnonymousMessage(endpointId, text, { game = null, prompt = null } = {}) {
-  await addDoc(endpointMessagesRef(endpointId), {
+// and count as already read. `threadId`/`senderKey` come from the
+// sender's browser (features/threads/threads.js): the capability for a
+// later private conversation, and the key a block applies to.
+export async function sendAnonymousMessage(endpointId, text, { game = null, prompt = null, threadId, senderKey }) {
+  const ref = await addDoc(endpointMessagesRef(endpointId), {
     text: text.trim(),
     game,
     prompt,
     read: false,
+    threadId,
+    senderKey,
     createdAt: serverTimestamp(),
   })
+  return ref.id
 }
 
 export function isUnread(message) {

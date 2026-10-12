@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../shared/auth-store.js'
 import CardSkeleton from '../../shared/components/CardSkeleton.jsx'
 import FunEmpty from '../../shared/components/FunEmpty.jsx'
@@ -9,6 +9,7 @@ import { gameGradientVars } from '../../shared/games.js'
 import { useCopyLink } from '../../shared/hooks/use-copy-link.js'
 import { timeAgo } from '../../shared/utils/time-ago.js'
 import { isUnread, subscribeToInbox, subscribeToOwnedEndpoints } from './inbox.js'
+import { subscribeToOwnedThreads } from '../threads/threads.js'
 import MessageSheet from './MessageSheet.jsx'
 import './InboxScreen.css'
 
@@ -30,10 +31,13 @@ export default function InboxScreen() {
   const copyLink = useCopyLink()
   const [endpoints, setEndpoints] = useState(null)
   const [inboxes, setInboxes] = useState({}) // endpointId -> messages
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState('all') // 'all' | endpointId | 'convos'
+  const [threads, setThreads] = useState([])
   const [openId, setOpenId] = useState(null)
 
   useEffect(() => subscribeToOwnedEndpoints(user.uid, setEndpoints), [user.uid])
+  // Phase 2: the private conversations this owner has opened.
+  useEffect(() => subscribeToOwnedThreads(user.uid, setThreads), [user.uid])
 
   useEffect(() => {
     const unsubscribes = (endpoints || []).map((endpoint) =>
@@ -56,6 +60,12 @@ export default function InboxScreen() {
   }, [inboxes, endpointById])
 
   const visible = filter === 'all' ? messages : messages.filter((message) => message.endpointId === filter)
+  // Threads whose link still exists, newest activity first.
+  const liveThreads = threads
+    .filter((thread) => endpointById[thread.endpointId])
+    .sort((a, b) => (b.lastActivityAt?.toMillis?.() ?? 0) - (a.lastActivityAt?.toMillis?.() ?? 0))
+  const threadById = Object.fromEntries(liveThreads.map((thread) => [thread.id, thread]))
+  const unreadReplies = liveThreads.filter((thread) => thread.ownerUnread).length
 
   const unreadCount = messages.filter(isUnread).length
   const subtitle = !loaded
@@ -64,6 +74,8 @@ export default function InboxScreen() {
       ? 'nothing yet — share your link 📭'
       : unreadCount > 0
         ? `${unreadCount} unopened 👀 tap to reveal`
+        : unreadReplies > 0
+          ? `${unreadReplies} new private ${unreadReplies === 1 ? 'reply' : 'replies'} 💬`
         : 'all caught up ✨'
   const openMessage = openId && messages.find((message) => message.id === openId)
 
@@ -71,7 +83,7 @@ export default function InboxScreen() {
     <Page title="inbox">
       <p className="inbox-sub">{subtitle}</p>
 
-      {endpoints !== null && endpoints.length > 1 && (
+      {endpoints !== null && (endpoints.length > 1 || liveThreads.length > 0) && (
         <div className="inbox-filters" role="tablist" aria-label="Filter by link">
           <button
             type="button"
@@ -94,10 +106,39 @@ export default function InboxScreen() {
               @{endpoint.handle}
             </button>
           ))}
+          {liveThreads.length > 0 && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'convos'}
+              className="chip"
+              onClick={() => setFilter('convos')}
+            >
+              💬 convos
+              {unreadReplies > 0 && <span className="inbox-chip-dot" aria-label={`${unreadReplies} new`} />}
+            </button>
+          )}
         </div>
       )}
 
-      {endpoints === null || !loaded ? (
+      {filter === 'convos' ? (
+        <div className="inbox-convos">
+          {liveThreads.map((thread) => (
+            <Link key={thread.id} to={`/t/${thread.id}`} className="inbox-convo pop-in">
+              <span className="inbox-convo__ghost" aria-hidden="true">
+                👻
+              </span>
+              <span className="inbox-convo__copy">
+                <b>{thread.message?.text}</b>
+                <small>
+                  @{thread.handle} · {thread.status === 'ended' ? 'ended' : timeAgo(thread.lastActivityAt)}
+                </small>
+              </span>
+              {thread.ownerUnread && <span className="inbox-convo__new">new reply</span>}
+            </Link>
+          ))}
+        </div>
+      ) : endpoints === null || !loaded ? (
         <CardSkeleton />
       ) : endpoints.length === 0 ? (
         <FunEmpty
@@ -152,7 +193,13 @@ export default function InboxScreen() {
                     <span>
                       {timeAgo(message.createdAt)} · @{endpoint.handle}
                     </span>
-                    {message.answer && <span className="inbox-answered">✓ answered</span>}
+                    {threadById[message.threadId]?.ownerUnread ? (
+                      <span className="inbox-answered">💬 new</span>
+                    ) : threadById[message.threadId] ? (
+                      <span>💬</span>
+                    ) : (
+                      message.answer && <span className="inbox-answered">✓ answered</span>
+                    )}
                   </>
                 }
               />
@@ -166,6 +213,7 @@ export default function InboxScreen() {
           key={openMessage.id}
           message={openMessage}
           endpoint={endpointById[openMessage.endpointId]}
+          thread={openMessage.threadId ? threadById[openMessage.threadId] : undefined}
           onClose={() => setOpenId(null)}
         />
       )}

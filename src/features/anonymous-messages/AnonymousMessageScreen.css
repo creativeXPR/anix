@@ -238,3 +238,103 @@
     animation: none;
   }
 }
+
+/* Sent state: the private-link box (phase 2 two-way reply). */
+.anon-message__private {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111111;
+  text-align: left;
+}
+
+.anon-message__private small {
+  color: #555555;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.anon-message__private-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.anon-message__private-actions > * {
+  flex: 1;
+}
+
+.anon-message__private .btn--primary {
+  background: #111111;
+  color: #ffffff;
+}
+
+.anon-message__private .btn--secondary {
+  background: #f0e8fb;
+  color: #111111;
+}
+
+/* "your messages to @handle" list under the send form. */
+.my-convos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.my-convos__title {
+  margin: 0;
+  font: 800 16px var(--font-display);
+  text-align: center;
+}
+
+.my-convos__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111111;
+  text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.my-convos__row:active {
+  transform: scale(0.98);
+}
+
+.my-convos__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.my-convos__status {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 700 12px var(--font-body);
+}
+
+.my-convos__status--muted {
+  background: #f0e8fb;
+  color: #6b6070;
+}
+
+.my-convos__status--open {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.my-convos__status--new {
+  background: linear-gradient(120deg, var(--msg-from), var(--msg-to));
+  color: #ffffff;
+  animation: pop-in 0.3s var(--ease-bounce) both;
+}

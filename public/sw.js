@@ -32,5 +32,21 @@ messaging.onBackgroundMessage((payload) => {
     body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
+    // App path to open on tap (set by the Cloud Functions: /chats, /t/…).
+    data: { link: payload.data?.link || '/' },
   })
+})
+
+// Tapping a notification: focus an open Anix tab and send it to the
+// notification's page, or open a new one.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = new URL(event.notification.data?.link || '/', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const existing = windows.find((client) => client.url.startsWith(self.location.origin))
+      if (existing) return existing.focus().then(() => existing.navigate(url))
+      return self.clients.openWindow(url)
+    }),
+  )
 })

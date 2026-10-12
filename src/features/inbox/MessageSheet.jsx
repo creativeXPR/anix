@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuthUser } from '../../shared/auth-store.js'
 import Button from '../../shared/components/Button.jsx'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import MessageCard from '../../shared/components/MessageCard.jsx'
@@ -8,6 +10,7 @@ import ShareIcon from '../../shared/icons/ShareIcon.jsx'
 import TrashIcon from '../../shared/icons/TrashIcon.jsx'
 import { useToast } from '../../shared/toast-store.js'
 import { generateMessageImageBlob } from '../../shared/utils/message-image.js'
+import { openThread } from '../threads/threads.js'
 import { deleteReceivedMessage, isUnread, markMessageRead, saveAnswer } from './inbox.js'
 import './MessageSheet.css'
 
@@ -15,14 +18,18 @@ const ANSWER_MAX = 500
 
 // Opening one message: a sealed one flips open (and is marked read), then
 // the owner can type an answer and share the card (+ answer) as a story
-// image — NGL's core loop — or delete it (behind the usual confirm).
-export default function MessageSheet({ message, endpoint, onClose }) {
+// image — NGL's core loop — reply privately (phase 2: opens an anonymous
+// two-way thread), or delete it (behind the usual confirm). `thread` is
+// the private conversation already opened for this message, if any.
+export default function MessageSheet({ message, endpoint, thread, onClose }) {
   const showToast = useToast()
+  const navigate = useNavigate()
+  const { user } = useAuthUser()
   // Captured on open: was it sealed? (the snapshot flips to read quickly)
   const [wasSealed] = useState(() => isUnread(message))
   const [answer, setAnswer] = useState(message.answer || '')
   const [previewUrl, setPreviewUrl] = useState(null)
-  const [busy, setBusy] = useState(null) // 'preview' | 'share' | null
+  const [busy, setBusy] = useState(null) // 'preview' | 'share' | 'reply' | null
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const previewRef = useRef(null)
 
@@ -68,6 +75,17 @@ export default function MessageSheet({ message, endpoint, onClose }) {
     }
   }
 
+  async function handleReplyPrivately() {
+    setBusy('reply')
+    try {
+      const threadId = await openThread({ endpoint, message, ownerId: user.uid })
+      navigate(`/t/${threadId}`)
+    } catch (err) {
+      showToast(err.message, 'error')
+      setBusy(null)
+    }
+  }
+
   async function handleDelete() {
     setConfirmingDelete(false)
     try {
@@ -108,6 +126,14 @@ export default function MessageSheet({ message, endpoint, onClose }) {
           {answer.trim() ? 'Answer & share' : 'Share'}
         </Button>
       </div>
+
+      {/* Messages from before phase 2 have no thread id — no private reply. */}
+      {message.threadId && (
+        <Button variant="primary" block onClick={handleReplyPrivately} loading={busy === 'reply'}>
+          💬 {thread ? 'Open private chat' : 'Reply privately'}
+          {thread?.ownerUnread && <span className="message-sheet__dot" aria-label="new reply" />}
+        </Button>
+      )}
 
       <Button variant="secondary" size="sm" onClick={() => setConfirmingDelete(true)} style={{ alignSelf: 'center' }}>
         <TrashIcon />

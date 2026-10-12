@@ -33,3 +33,10 @@
     animation: none;
   }
 }
+
+.message-sheet__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--secondary-green);
+}

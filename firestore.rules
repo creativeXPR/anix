@@ -106,7 +106,10 @@ service cloud.firestore {
       // Anonymous senders write with no auth at all (that's the
       // feature); only the endpoint's owner can ever read messages back.
       match /messages/{messageId} {
-        allow create: if true;
+        // Open to anyone (no auth) — except a browser the owner blocked
+        // (phase 2: its per-link senderKey is in the endpoint's `blocked`).
+        allow create: if !(request.resource.data.get('senderKey', '')
+          in get(/databases/$(database)/documents/messageEndpoints/$(endpointId)).data.get('blocked', []));
         allow read: if isEndpointOwner();
         // NGL redesign (2026-10-12): the owner opens sealed messages
         // (`read`) and answers them (`answer`/`answeredAt`) — those three
@@ -123,6 +126,68 @@ service cloud.firestore {
         // The owner can delete a message they received (behind a confirm).
         allow delete: if isEndpointOwner();
       }
+    }
+
+    // ---- Anonymous two-way reply (phase 2, 2026-10-12) ----
+    //
+    // threads/{threadId}: the id is a long random capability the SENDER's
+    // browser generated and stamped on their message; knowing it is what
+    // lets the sender read/post (no sender account exists). Only the link
+    // owner can create the thread, and only at the id on that message.
+    match /threads/{threadId} {
+      function thread() {
+        return get(/databases/$(database)/documents/threads/$(threadId)).data;
+      }
+      function isThreadOwner() {
+        return request.auth != null && thread().ownerId == request.auth.uid;
+      }
+      function senderBlocked() {
+        return thread().senderKey != null && thread().senderKey
+          in get(/databases/$(database)/documents/messageEndpoints/$(thread().endpointId)).data.get('blocked', []);
+      }
+
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.ownerId == request.auth.uid
+        && get(/databases/$(database)/documents/messageEndpoints/$(request.resource.data.endpointId)).data.ownerId == request.auth.uid
+        && get(/databases/$(database)/documents/messageEndpoints/$(request.resource.data.endpointId)/messages/$(request.resource.data.messageId)).data.threadId == threadId
+        && request.resource.data.status == 'open';
+      // Owner: status (end) + bookkeeping. Sender (anyone with the id):
+      // bookkeeping only, while open; marking their side seen always works.
+      allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'ownerUnread', 'senderUnread', 'lastFrom', 'lastActivityAt'])
+          && request.resource.data.status in ['open', 'ended'])
+        || (resource.data.status == 'open'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['ownerUnread', 'senderUnread', 'lastFrom', 'lastActivityAt'])
+          && request.resource.data.lastFrom in [resource.data.lastFrom, 'sender'])
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['senderUnread'])
+          && request.resource.data.senderUnread == false);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if true;
+        allow create: if thread().status == 'open'
+          && request.resource.data.keys().hasOnly(['from', 'text', 'createdAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time
+          && ((request.resource.data.from == 'owner' && isThreadOwner())
+            || (request.resource.data.from == 'sender' && !senderBlocked()));
+        allow update, delete: if false;
+      }
+    }
+
+    // Sender's "notify me when they reply" push token — write-only for
+    // clients (anyone holding the thread id); only Cloud Functions read it.
+    match /threadPush/{threadId} {
+      allow create, update: if request.resource.data.keys().hasOnly(['token', 'updatedAt'])
+        && request.resource.data.token is string
+        && request.resource.data.token.size() < 500;
+      allow read, delete: if false;
     }
 
     // #006 push notifications (2026-09-21): fcmTokens lives here, owner-

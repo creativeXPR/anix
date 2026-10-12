@@ -1,20 +1,25 @@
-/* Black floating pill (NGL redesign, #001-B): a bottom bar on mobile /
-   tablet, a vertical rail at the left edge on desktop. It floats over
-   the content, so AppShell.css reserves the space it covers. */
+/* Floating pill (NGL redesign, #001-B): a bottom bar on mobile / tablet,
+   a vertical rail at the left edge on desktop. It floats over the
+   content, so AppShell.css reserves the space it covers. White in light
+   mode (user request 2026-10-12 — the black pill read as dark-mode on a
+   light page), black in dark mode; the active item is the brand gradient
+   either way. */
 .nav-bar {
   position: fixed;
   z-index: 40;
   display: flex;
   gap: 6px;
   padding: 7px;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #111111;
-  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.55);
+  background: var(--panel);
+  box-shadow: 0 14px 34px -14px rgba(60, 20, 110, 0.4);
 }
 
 :root[data-theme='dark'] .nav-bar {
+  border-color: rgba(255, 255, 255, 0.1);
   background: #000000;
-  outline: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.55);
 }
 
 .nav-bar--bottom {
@@ -39,12 +44,20 @@
   width: 56px;
   height: 50px;
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-muted);
   text-decoration: none;
   transition: transform var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
 
 .nav-bar__item:hover {
+  color: var(--text-h);
+}
+
+:root[data-theme='dark'] .nav-bar__item {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+:root[data-theme='dark'] .nav-bar__item:hover {
   color: #ffffff;
 }
 
@@ -75,7 +88,8 @@
   }
 }
 
-/* Unread count on Chats — a white pill so it reads on the black bar. */
+/* Unread count on Chats — an ink pill (black on the white bar, white on
+   the black one) so it reads in either theme. */
 .nav-bar__badge {
   position: absolute;
   top: 7px;
@@ -84,8 +98,8 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #ffffff;
-  color: #111111;
+  background: var(--ink);
+  color: var(--on-ink);
   font: 700 11px/18px var(--font-body);
   text-align: center;
   animation: nav-pop 0.3s var(--ease-bounce);

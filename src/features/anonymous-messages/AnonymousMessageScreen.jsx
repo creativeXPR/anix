@@ -6,6 +6,11 @@ import { db } from '../../shared/firebase.js'
 import { gameGradientVars, gameOf, promptOf, randomDice } from '../../shared/games.js'
 import { messageGradientVars } from '../../shared/utils/message-gradient.js'
 import { sendAnonymousMessage } from '../inbox/inbox.js'
+import MyConversations from '../threads/MyConversations.jsx'
+import NotifyMeButton from '../threads/NotifyMeButton.jsx'
+import { getSenderKey, rememberMyThread, secureId, threadLink } from '../threads/threads.js'
+import { useCopyLink } from '../../shared/hooks/use-copy-link.js'
+import { pushConfigured } from '../../shared/notifications.js'
 import './AnonymousMessageScreen.css'
 
 export default function AnonymousMessageScreen() {
@@ -14,7 +19,9 @@ export default function AnonymousMessageScreen() {
   const [endpoint, setEndpoint] = useState(undefined)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
+  // The secret thread id of the message just sent (falsy = composing).
+  const [sent, setSent] = useState(null)
+  const copyLink = useCopyLink()
   const [error, setError] = useState(null)
   const [rolling, setRolling] = useState(false)
 
@@ -35,12 +42,33 @@ export default function AnonymousMessageScreen() {
     if (!text.trim()) return
     setError(null)
     setSending(true)
+    // Phase 2: every message carries a secret thread id (this browser's
+    // way back if the owner replies privately) and this browser's
+    // per-link sender key (what a block applies to).
+    const threadId = secureId()
+    const prompt = promptOf(endpoint)
     try {
-      await sendAnonymousMessage(endpointId, text, { game: endpoint?.game || null, prompt: promptOf(endpoint) })
-      setSent(true)
+      await sendAnonymousMessage(endpointId, text, {
+        game: endpoint?.game || null,
+        prompt,
+        threadId,
+        senderKey: getSenderKey(endpointId),
+      })
+      rememberMyThread({
+        threadId,
+        endpointId,
+        handle: endpoint?.handle,
+        text: text.trim(),
+        game: endpoint?.game || null,
+        prompt,
+        sentAt: Date.now(),
+      })
+      setSent(threadId)
       setText('')
     } catch (err) {
-      setError(err.message)
+      setError(
+        err?.code === 'permission-denied' ? "You can't send messages to this link." : err.message,
+      )
     } finally {
       setSending(false)
     }
@@ -66,7 +94,20 @@ export default function AnonymousMessageScreen() {
             <div className="anon-message__sent-check" aria-hidden="true">✓</div>
             <h1>sent!</h1>
             <p>Your message was delivered anonymously 🤫</p>
-            <Button className="anon-message__send" onClick={() => setSent(false)}>
+            <div className="anon-message__private">
+              <b>🔒 want to see if they reply?</b>
+              <small>They can answer you privately. Save your private link — anyone with it can read the reply.</small>
+              <div className="anon-message__private-actions">
+                <Button size="sm" onClick={() => copyLink(threadLink(sent))}>
+                  Copy private link
+                </Button>
+                <Link className="btn btn--secondary btn--sm" to={`/t/${sent}`}>
+                  Open
+                </Link>
+              </div>
+              {pushConfigured() && <NotifyMeButton threadId={sent} compact />}
+            </div>
+            <Button className="anon-message__send" onClick={() => setSent(null)}>
               Send another
             </Button>
             <GetYourOwn />
@@ -117,6 +158,7 @@ export default function AnonymousMessageScreen() {
             <Button type="submit" className="anon-message__send" loading={sending} disabled={!text.trim()}>
               {sending ? 'Sending…' : 'Send!'}
             </Button>
+            <MyConversations endpointId={endpointId} handle={endpoint?.handle} />
             <GetYourOwn />
           </form>
         )}

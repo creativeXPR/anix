@@ -6,6 +6,7 @@ import ChatRoomScreen from './features/chatroom/ChatRoomScreen.jsx'
 import HomeScreen from './features/home/HomeScreen.jsx'
 import InboxScreen from './features/inbox/InboxScreen.jsx'
 import ProfileScreen from './features/profile/ProfileScreen.jsx'
+import ThreadScreen from './features/threads/ThreadScreen.jsx'
 import AppShell from './shared/components/AppShell.jsx'
 import InstallCard from './shared/components/InstallCard.jsx'
 import RequireAuth from './shared/components/RequireAuth.jsx'
@@ -37,6 +38,9 @@ function App() {
             (/r/uu23g) is a valid link too. */}
         <Route path="/r/:roomId/:handle?" element={<ChatRoomScreen />} />
         <Route path="/m/:userId/:handle?" element={<AnonymousMessageScreen />} />
+        {/* Private anonymous conversation (phase 2) — outside the auth gate:
+            the sender has no account; the secret id is their way in. */}
+        <Route path="/t/:threadId" element={<ThreadScreen />} />
         {/* Passcode-gated, no real Anix account needed — see AdminApp.jsx
             and firestore.rules' admin/adminUnlocks section. */}
         <Route path="/admin" element={<AdminApp />} />

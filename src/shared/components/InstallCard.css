@@ -93,7 +93,7 @@
 /* Keep the floating card off each page's main action: above the nav pill
    inside the app shell; at the top on the full-bleed gradient pages
    (sign-up, sender page) whose CTAs sit low; hidden mid-conversation in
-   a chat room (Profile keeps a permanent install row). */
+   a chat room or private thread (Profile keeps a permanent install row). */
 body:has(.nav-bar--bottom) .install-card--floating {
   bottom: calc(96px + env(safe-area-inset-bottom));
 }
@@ -103,6 +103,6 @@ body:has(.auth-screen, .anon-message) .install-card--floating {
   bottom: auto;
 }
 
-body:has(.chat-room) .install-card--floating {
+body:has(.chat-room, .thread) .install-card--floating {
   display: none;
 }

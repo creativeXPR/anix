@@ -1115,3 +1115,49 @@ Every screen restyled to the approved prototype (`test/anix-ngl.html`):
 - Deploy order matters: **firestore rules before hosting** — the new
   client writes read/answer and deletes messages, which the old rules
   reject.
+
+## Phase 2: anonymous two-way reply (2026-10-12)
+
+Decided via playbook #006/#002/#008: full back-and-forth; sender gets
+back via same-browser memory + a private link; opt-in push for senders;
+owner can end a conversation and block a sender; owner must reply first;
+threads live in Chats ("💬 convos" chip); sender sees "your messages to
+@handle" on the link page; the per-browser sender key is never surfaced.
+
+- **Capability model** (`src/features/threads/threads.js`): on send, the
+  sender's browser makes a crypto-random 24-char `threadId` (+ a per-link
+  `senderKey`), stamped on the message and remembered in localStorage
+  (`anix:threads:<endpointId>`, `anix:thread:<threadId>`). The thread doc
+  `threads/{threadId}` only exists once the owner taps **Reply
+  privately** (MessageSheet → `openThread`). Knowing the id = sender
+  access; nobody learns who anyone is.
+- **Data**: `threads/{id}` {ownerId, endpointId, messageId, handle,
+  themeColor, message snapshot, senderKey, status open|ended,
+  ownerUnread, senderUnread, lastFrom, createdAt, lastActivityAt};
+  `threads/{id}/messages` {from owner|sender, text ≤1000, createdAt};
+  `threadPush/{id}` {token} — sender's FCM token, client write-only.
+  Blocking = `messageEndpoints/{id}.blocked` array of senderKeys.
+- **Rules**: thread create only by the link owner at the id stored on
+  that message; owner updates status/bookkeeping; sender (id holder)
+  updates bookkeeping only while open, can always mark their side seen;
+  thread messages: owner as owner, sender as sender unless blocked, only
+  while open. Endpoint message create rejects blocked senderKeys.
+- **Screens**: `/t/:threadId` ThreadScreen (both sides; owner ⋯ menu →
+  End conversation / Block sender, each confirmed); sender page sent
+  state shows the private link + notify-me; `MyConversations` list with
+  live status; Chats "💬 convos" chip + 💬 markers on cards; nav/Home
+  unread totals include unseen private replies.
+- **Functions**: FIXED a pre-existing bug — every Firestore trigger was
+  bound to the (default) database in europe-west3, so Anix push never
+  fired. Triggers now use `onAnixDocCreated` ({database:'anix',
+  region:'europe-west1'}). New `onThreadMessage` (sender reply → owner
+  push; owner reply → sender push via threadPush). Pushes carry a `link`
+  the service worker opens on tap. deleteMessageEndpoint also deletes the
+  link's threads. Deploying this moves 3 triggers between regions (old
+  europe-west3 copies get deleted).
+- Also: RequireAuth shows `PageSkeleton` while auth resolves (was a
+  blank page with only the nav); the nav pill is white in light mode,
+  black in dark (user request).
+- Push needs `VITE_FIREBASE_VAPID_KEY` in `.env` at build time — the
+  2026-10-12 hosting deploy went out without it (new push sign-ups
+  disabled) until it's added and hosting is redeployed.

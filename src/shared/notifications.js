@@ -8,16 +8,23 @@ import { db, firebaseApp } from './firebase.js'
 // tab — until it's set, enablePush() just no-ops instead of throwing.
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY
 
-// Own device/account, so writes are always allowed by firestore.rules'
-// users/{uid} rule regardless of what else is on the doc.
-export async function enablePush(uid) {
-  if (!VAPID_KEY || !(await isSupported())) return false
+// Asks permission and returns this browser's FCM token (or null). No
+// account needed — anonymous senders use it for "notify me when they
+// reply" (stored per thread, see threads.js saveSenderPushToken).
+export async function getPushToken() {
+  if (!VAPID_KEY || !(await isSupported())) return null
   const permission = await Notification.requestPermission()
-  if (permission !== 'granted') return false
+  if (permission !== 'granted') return null
 
   const registration = await navigator.serviceWorker.ready
   const messaging = getMessaging(firebaseApp)
-  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration })
+  return (await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration })) || null
+}
+
+// Own device/account, so writes are always allowed by firestore.rules'
+// users/{uid} rule regardless of what else is on the doc.
+export async function enablePush(uid) {
+  const token = await getPushToken()
   if (!token) return false
 
   await setDoc(doc(db, 'users', uid), { fcmTokens: arrayUnion(token) }, { merge: true })
