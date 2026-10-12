@@ -8,6 +8,8 @@ import {
   serverTimestamp,
   setDoc,
   doc,
+  deleteDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
@@ -46,12 +48,40 @@ function endpointMessagesRef(endpointId) {
 
 // Anonymous senders never need to be signed in — matches the "receive
 // anonymous messages" feature (see firestore.rules: create is open,
-// read is owner-only).
-export async function sendAnonymousMessage(endpointId, text) {
+// read is owner-only). `game`/`prompt` snapshot what the sender was
+// answering (see shared/games.js); `read: false` makes it a sealed tile
+// in the owner's inbox. Messages from before this have no `read` field
+// and count as already read.
+export async function sendAnonymousMessage(endpointId, text, { game = null, prompt = null } = {}) {
   await addDoc(endpointMessagesRef(endpointId), {
     text: text.trim(),
+    game,
+    prompt,
+    read: false,
     createdAt: serverTimestamp(),
   })
+}
+
+export function isUnread(message) {
+  return message.read === false
+}
+
+// Owner-only updates — firestore.rules limits them to exactly these
+// fields (read / answer / answeredAt).
+export async function markMessageRead(endpointId, messageId) {
+  await updateDoc(doc(db, 'messageEndpoints', endpointId, 'messages', messageId), { read: true })
+}
+
+export async function saveAnswer(endpointId, messageId, answer) {
+  const trimmed = answer.trim()
+  await updateDoc(doc(db, 'messageEndpoints', endpointId, 'messages', messageId), {
+    answer: trimmed || null,
+    answeredAt: trimmed ? serverTimestamp() : null,
+  })
+}
+
+export async function deleteReceivedMessage(endpointId, messageId) {
+  await deleteDoc(doc(db, 'messageEndpoints', endpointId, 'messages', messageId))
 }
 
 export function subscribeToInbox(endpointId, onChange) {

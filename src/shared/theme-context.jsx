@@ -3,9 +3,9 @@ import { THEME_STORAGE_KEY, ThemeContext } from './theme-store.js'
 
 function getInitialTheme() {
   try {
-    return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark'
+    return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light'
   } catch {
-    return 'dark'
+    return 'light'
   }
 }
 
@@ -13,10 +13,10 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(getInitialTheme)
 
   useEffect(() => {
-    // Dark is the unattributed default (see index.css) — only light needs
+    // Light is the unattributed default (see index.css) — only dark needs
     // the attribute set.
-    if (theme === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light')
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark')
     } else {
       document.documentElement.removeAttribute('data-theme')
     }

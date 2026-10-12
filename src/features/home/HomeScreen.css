@@ -1,0 +1,87 @@
+.home-hello h1 {
+  font-size: clamp(38px, 9vw, 56px);
+}
+
+.home-hello p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.home-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.home-head small {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.home-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-new-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 180px;
+  border: 2.5px dashed var(--border);
+  border-radius: 26px;
+  background: transparent;
+  color: var(--text-muted);
+  font: 800 20px var(--font-display);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.home-new-tile--row {
+  min-height: 84px;
+  flex-direction: row;
+}
+
+.home-new-tile:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+:root[data-theme='dark'] .home-new-tile:hover {
+  border-color: var(--primary-light);
+  color: var(--primary-light);
+}
+
+.home-new-tile:active {
+  transform: scale(0.97);
+}
+
+.home-new-tile__plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--grad);
+  color: #ffffff;
+  font-size: 28px;
+}
+
+.home-new-tile--row .home-new-tile__plus {
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+}

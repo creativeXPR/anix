@@ -1,0 +1,44 @@
+/* Playful empty state (#004-D): wobbling emoji, cheeky line, gradient CTA. */
+.fun-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 20px;
+  border-radius: 26px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  text-align: center;
+}
+
+.fun-empty__emoji {
+  font-size: 52px;
+  line-height: 1;
+  animation: fun-wobble 2.4s ease-in-out infinite;
+}
+
+.fun-empty h3 {
+  font-size: 24px;
+}
+
+.fun-empty p {
+  max-width: 300px;
+  margin: 0 0 6px;
+  color: var(--text-muted);
+}
+
+@keyframes fun-wobble {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg) scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fun-empty__emoji {
+    animation: none;
+  }
+}

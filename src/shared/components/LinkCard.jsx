@@ -1,69 +1,65 @@
 import { useState } from 'react'
-import { THEME_PRESETS } from '../theme-presets.js'
-import { uploadBanner } from '../upload-banner.js'
+import { Link } from 'react-router-dom'
+import { gameGradientVars, gameOf, headerOf } from '../games.js'
+import { DEFAULT_ROOM_EMOJI } from '../room-defaults.js'
+import { messageGradientVars } from '../utils/message-gradient.js'
 import { useCopyLink } from '../hooks/use-copy-link.js'
 import { useToast } from '../toast-store.js'
-import ArrowRightIcon from '../icons/ArrowRightIcon.jsx'
-import CloseIcon from '../icons/CloseIcon.jsx'
+import ChevronRightIcon from '../icons/ChevronRightIcon.jsx'
 import CopyIcon from '../icons/CopyIcon.jsx'
-import PowerIcon from '../icons/PowerIcon.jsx'
+import LockIcon from '../icons/LockIcon.jsx'
 import SettingsIcon from '../icons/SettingsIcon.jsx'
-import Card from './Card.jsx'
+import TrashIcon from '../icons/TrashIcon.jsx'
+import UnlockIcon from '../icons/UnlockIcon.jsx'
+import Button from './Button.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
-import FilePicker from './FilePicker.jsx'
-import './LinkCard.css'
-import './modal.css'
+import ItemSettingsSheet from './ItemSettingsSheet.jsx'
 import Spinner from './Spinner.jsx'
+import './LinkCard.css'
 
-// One room or one message-endpoint, as a card with its own actions —
-// shared between Home (rooms) and Chats (endpoints) since both follow
-// the same "up to 3, each closable/deletable/themeable" shape.
+// One room or one message-endpoint on Home (NGL redesign): a white card
+// tinted by the item's theme gradient. Links get a gradient band on top;
+// rooms get a tappable "enter" row. Both share the action row (Copy link
+// / [open-close] / settings / delete) and the settings sheet.
 export default function LinkCard({
   item,
-  icon,
   kind,
   link,
+  enterTo,
   activeCount,
-  onEnter,
+  unreadCount = 0,
   onToggleStatus,
   onDelete,
   onUpdateSettings,
-  children,
 }) {
   const copyLink = useCopyLink()
   const showToast = useToast()
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [bannerFile, setBannerFile] = useState(null)
-  const [uploading, setUploading] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [togglingStatus, setTogglingStatus] = useState(false)
-  const [savingTheme, setSavingTheme] = useState(false)
+  const isRoom = kind === 'room'
+  const isOpen = item.status === 'open'
 
   async function handleToggleStatus() {
     setTogglingStatus(true)
     try {
       await onToggleStatus()
+      showToast(isOpen ? 'Room closed 🔒' : 'Room is open 🟢', 'success')
+    } catch (err) {
+      showToast(err.message, 'error')
     } finally {
       setTogglingStatus(false)
     }
   }
 
-  async function handleThemeSelect(themeColor) {
-    setSavingTheme(true)
-    try {
-      await onUpdateSettings({ themeColor })
-    } finally {
-      setSavingTheme(false)
-    }
-  }
-
   async function handleConfirmDelete() {
     setConfirmingDelete(false)
+    setSettingsOpen(false)
     setDeleting(true)
     try {
       await onDelete()
-      showToast(`${kind === 'room' ? 'Room' : 'Link'} deleted`, 'success')
+      showToast(`${isRoom ? 'Room' : 'Link'} deleted`, 'success')
       // Success unmounts this card once the owner's list updates — no
       // need to reset `deleting` ourselves, and doing so risks a
       // set-state-after-unmount warning if that update lands first.
@@ -73,119 +69,109 @@ export default function LinkCard({
     }
   }
 
-  async function handleBannerChange(file) {
-    setBannerFile(file)
-    if (!file) return
-    setUploading(true)
-    try {
-      const bannerImageUrl = await uploadBanner(kind, item.id, file)
-      await onUpdateSettings({ bannerImageUrl })
-    } finally {
-      setUploading(false)
-      setBannerFile(null)
-    }
-  }
+  const avatar = item.bannerImageUrl ? (
+    <img className="link-card__avatar" src={item.bannerImageUrl} alt="" />
+  ) : isRoom ? (
+    <span className="link-card__avatar link-card__avatar--emoji">{item.emoji || DEFAULT_ROOM_EMOJI}</span>
+  ) : (
+    <img className="link-card__avatar" src="/icon.svg" alt="" />
+  )
 
   return (
-    <div className="link-card">
-      <Card icon={icon} title={item.handle} className={deleting ? 'card--deleting' : ''}>
-      {kind === 'room' && (
-        <span className={`card__status text-b4 ${item.status === 'open' ? 'card__status--open' : ''}`}>
-          <span className="card__status-dot" />
-          {item.status === 'open' ? 'Open' : 'Closed'}
-          {typeof activeCount === 'number' && ` · ${activeCount} active`}
-        </span>
+    <article
+      className={`link-card pop-in${deleting ? ' link-card--deleting' : ''}`}
+      style={messageGradientVars(item.themeColor)}
+    >
+      {isRoom ? (
+        <Link className="link-card__enter" to={enterTo} aria-label={`Enter ${item.handle}`}>
+          {avatar}
+          <div className="link-card__id">
+            <b>{item.handle}</b>
+            <small>
+              {activeCount > 0 ? (
+                <span className="link-card__live">
+                  <i />
+                  {activeCount} inside now
+                </span>
+              ) : (
+                'nobody inside — share the link'
+              )}
+            </small>
+          </div>
+          <span className={`link-card__status${isOpen ? ' link-card__status--open' : ''}`}>{isOpen ? 'open' : 'closed'}</span>
+          <ChevronRightIcon className="link-card__chev" />
+        </Link>
+      ) : (
+        <>
+          {/* The link's game, as an NGL card band, + sealed-message count. */}
+          <div className="link-card__band" style={gameGradientVars(item.game)}>
+            <span className={`game-title${item.game && gameOf(item.game).loud ? ' game-title--loud' : ''}`}>
+              {headerOf(item)}
+            </span>
+            {unreadCount > 0 && <span className="link-card__new">{unreadCount} new 👀</span>}
+          </div>
+          <div className="link-card__row">
+            {avatar}
+            <div className="link-card__id">
+              <b>@{item.handle}</b>
+              <small>{link.replace(/^https?:\/\//, '')}</small>
+            </div>
+          </div>
+        </>
       )}
 
-      <div className="card__actions">
-        <button type="button" className="card__pill-btn" onClick={() => copyLink(link)}>
+      <div className="link-card__actions">
+        <Button size="sm" className="link-card__copy" onClick={() => copyLink(link)}>
           <CopyIcon />
           Copy link
-        </button>
-        {onEnter && (
-          <button type="button" className="card__pill-btn" onClick={onEnter}>
-            <ArrowRightIcon />
-            Enter
-          </button>
-        )}
-        {onToggleStatus && (
+        </Button>
+        {isRoom && (
           <button
             type="button"
-            className="card__pill-btn card__pill-btn--icon-only"
+            className="icon-btn"
             onClick={handleToggleStatus}
-            aria-label={item.status === 'open' ? 'Close room' : 'Open room'}
             disabled={togglingStatus}
+            aria-label={isOpen ? 'Close room' : 'Open room'}
+            title={isOpen ? 'Close room' : 'Open room'}
           >
-            {togglingStatus ? <Spinner size={14} /> : <PowerIcon />}
+            {togglingStatus ? <Spinner size={16} /> : isOpen ? <UnlockIcon /> : <LockIcon />}
           </button>
         )}
-        <button
-          type="button"
-          className="card__pill-btn card__pill-btn--icon-only"
-          onClick={() => setSettingsOpen((open) => !open)}
-          aria-label="Settings"
-        >
+        <button type="button" className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Settings">
           <SettingsIcon />
         </button>
         <button
           type="button"
-          className="card__pill-btn card__pill-btn--icon-only"
+          className="icon-btn"
           onClick={() => setConfirmingDelete(true)}
-          aria-label="Delete"
           disabled={deleting}
+          aria-label="Delete"
         >
-          <CloseIcon />
+          {deleting ? <Spinner size={16} /> : <TrashIcon />}
         </button>
       </div>
 
-      {children}
-
       {settingsOpen && (
-        <div className="card__expansion">
-          <span className="text-b3">Color theme{savingTheme ? ' — saving…' : ''}</span>
-          <div className="modal__swatches">
-            {THEME_PRESETS.map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                className={`modal__swatch${item.themeColor === preset.value ? ' modal__swatch--selected' : ''}`}
-                style={{ background: preset.value || 'var(--primary)' }}
-                onClick={() => handleThemeSelect(preset.value)}
-                aria-label={preset.label}
-                title={preset.label}
-                disabled={savingTheme}
-              />
-            ))}
-          </div>
-          <label className="text-b3" htmlFor={`banner-${item.id}`}>
-            Banner image (shown when your link is shared)
-          </label>
-          <FilePicker
-            id={`banner-${item.id}`}
-            file={bannerFile}
-            onChange={handleBannerChange}
-            label={uploading ? 'Uploading…' : 'Choose image'}
-            disabled={uploading}
-            existingLabel={item.bannerImageUrl ? 'Banner set ✓' : undefined}
-          />
-        </div>
-      )}
-      </Card>
-
-      {deleting && (
-        <div className="link-card__deleting-overlay">
-          <Spinner size={24} />
-        </div>
+        <ItemSettingsSheet
+          item={item}
+          kind={kind}
+          onUpdateSettings={onUpdateSettings}
+          onToggleStatus={isRoom ? handleToggleStatus : null}
+          togglingStatus={togglingStatus}
+          onDelete={() => setConfirmingDelete(true)}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
 
       {confirmingDelete && (
         <ConfirmDialog
-          title={`Delete this ${kind === 'room' ? 'room' : 'link'}?`}
+          title={`delete this ${isRoom ? 'room' : 'link'}?`}
           message={`"${item.handle}" and everything in it will be permanently deleted. This can't be undone.`}
+          confirmLabel={isRoom ? 'Delete room' : 'Delete link'}
           onConfirm={handleConfirmDelete}
           onCancel={() => setConfirmingDelete(false)}
         />
       )}
-    </div>
+    </article>
   )
 }

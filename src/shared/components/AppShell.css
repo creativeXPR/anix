@@ -23,12 +23,11 @@
 /* The bottom nav is `position: fixed` (see NavBar.css) so it can't be
    scrolled away — it needs the *scrolling* element itself (.page__content,
    not this non-scrolling flex container) to reserve space at the bottom,
-   or the last card in a long list would render underneath it. The extra
-   16px beyond the nav's own 60px height is a deliberate visual gap, not
-   just the minimum clearance, so the last card doesn't sit flush against
-   the nav. */
+   or the last card in a long list would render underneath it. The
+   floating pill is 64px tall and sits 16px up; the rest is breathing
+   room so the last card doesn't end flush against it. */
 .app-shell--bottom .page__content {
-  padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom));
+  padding-bottom: calc(64px + 16px + 24px + env(safe-area-inset-bottom));
 }
 
 /* Home's header carries the app logo (Page's `brand` prop) and is
@@ -49,14 +48,18 @@
   padding-top: calc(65px + env(safe-area-inset-top, 0px));
 }
 
-/* Rail (desktop) orientation: the fixed header must start past the
-   rail's own width (76px, border-box so that's the true rendered
-   width), not span the full viewport, and its own padding is taller
-   (Page.css's 900px+ media query) so the content offset differs too. */
+/* Rail (desktop) orientation: the floating rail pill (20px in, 70px
+   wide) covers the left edge, so content and the fixed header start
+   past it at 100px. The header's own padding is taller (Page.css's
+   900px+ media query) so the content offset differs too. */
+.app-shell--rail .app-shell__content {
+  padding-left: 100px;
+}
+
 .app-shell--rail .page__header--fixed {
   position: fixed;
   top: 0;
-  left: 76px;
+  left: 100px;
   right: 0;
   z-index: 30;
   background: var(--bg);
@@ -75,4 +78,14 @@
 .app-shell__content {
   display: flex;
   flex-direction: column;
+}
+
+/* A fixed element's % padding resolves against the viewport, not the
+   content area — so line the brand header up with Page.css's 880px
+   column using the real content width (viewport minus the 100px rail). */
+@media (min-width: 900px) {
+  .app-shell--rail .page__header--fixed {
+    padding-left: max(24px, calc((100vw - 100px - 880px) / 2));
+    padding-right: max(24px, calc((100vw - 100px - 880px) / 2));
+  }
 }

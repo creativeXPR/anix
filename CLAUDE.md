@@ -953,3 +953,165 @@ app, not by re-reasoning about the code:
   itself verified only up to the known Anonymous-auth gap above — the
   passcode gate/dashboard UI and rules couldn't be exercised
   end-to-end until that's enabled.
+
+## NGL-style anonymous message rendering (2026-10-11)
+
+Received anonymous messages used to show as generic icon `Card`s and the
+share image was a dark outlined box — "not rendered as good as NGL's".
+Now one visual object is used everywhere:
+
+- `shared/components/MessageCard.jsx` — gradient header strip carrying
+  the prompt (`DEFAULT_PROMPT`, NGL's own "send me anonymous messages!",
+  since links have no custom prompt yet) over a white body with heavy
+  centered text. White-bodied in both app themes on purpose (it's the
+  "screenshot object", not app chrome). Used in a grid on Chats.
+- `shared/utils/message-gradient.js` — the gradient is the endpoint's
+  themeColor → the same color hue-rotated +35° and slightly lightened
+  (pink→orange for the default, blue→violet, green→teal…). Done in JS
+  (not CSS relative colors) because the canvas needs real hex values.
+- `message-image.js` redrawn as NGL's story share: full gradient
+  background, the same card centered, banner as a rounded avatar above
+  it, logo + "anix" wordmark at the bottom.
+- `/m/:id` sender page rebuilt as NGL's compose screen: gradient page,
+  card with white header (avatar, @handle, prompt) over a frosted
+  textarea, big black "Send!" pill, pop-in "Sent!" state. Fixed light
+  colors, not app tokens — it's the public face for link visitors.
+- Poppins 700/800 added to the font link for the heavy type.
+- Planned separately (not built, discuss first): an NGL-style marketing
+  landing page; the user is also doing a minimalist redesign in `test/`.
+
+## NGL redesign — step 1: foundation (2026-10-12)
+
+Full redesign decided 2026-10-11/12 (Design Playbook #003-30 = NGL; the
+approved prototype is `test/anix-ngl.html`). Ported in steps: 1
+foundation, 2 screens, 3 features + backend, 4 deploy. Step 1:
+
+- **Brand is purple, from the icon** (ghost ≈#5b0e98 on lavender) — the
+  #ff3d7c pink above (2026-09-19) is superseded. `--primary #7b1fd4`,
+  brand gradient `--grad` = #7b1fd4 → #d23fc0. Default link/room theme
+  (`themeColor: null`) = that exact pair (message-gradient.js pins it).
+  THEME_PRESETS: Default, Pink, Blue, Green, Orange (Violet dropped).
+- **Light is the default**, dark is opt-in (`data-theme="dark"`). The
+  storage key moved to `anix:theme-v2` because the old `anix:theme` held
+  "dark" for every existing user (written on every visit), so everyone
+  starts on light once. Pre-paint script lives in BOTH index.html and
+  functions/index-template.html.
+- Token names kept (--bg/--panel/--panel-alt/--border/--text…) so old
+  screens restyle in place; new: --grad-from/--grad-to/--grad, --ink /
+  --on-ink (black pill, white in dark), --shadow, --thumb, --danger.
+- Fonts: Bricolage Grotesque 800 for headings/buttons (`--font-display`),
+  Poppins body. Note: Bricolage draws "@" as a circled a — keep @handles
+  in the body font.
+- Scrollbars: thin + invisible until hover (index.css, global).
+- Glossy icon: `public/icon.svg` (+ icon-192/512.png, maskable-512,
+  apple-touch-icon from the full-bleed `icon-maskable.svg`). icon.jpg is
+  no longer referenced (kept as the original artwork). Manifest now light
+  `#f8f5fd` bg, `#7b1fd4` theme.
+- Button: primary = ink pill, grad, secondary = soft, danger; `size="sm"`,
+  `block`. `.field` = the shared input style; `.section-label` above
+  sheet sections.
+- `Sheet.jsx` replaces the old .modal overlay everywhere (ConfirmDialog,
+  NotificationPrompt, CreateLinkModal): bottom sheet / centered card
+  ≥600px, portaled to body (stacks), drag-to-close from the grabber
+  (touch) or any empty area (mouse), flick, backdrop, Escape (top-most
+  only). Children never shrink (a scrolling flex column squashed CTAs).
+- NavBar = black floating pill, gradient active item; bottom on
+  mobile/tablet, left rail ≥900px. It floats, so AppShell pads content
+  (bottom: 104px + safe area; rail: 100px left).
+- Icons: stroke 2 → 2.5.
+- Not yet restyled (step 2): Auth, Home/LinkCard, Chats, Profile, chat
+  room (still uses theme-vars.js' dark surfaces), sender page details.
+
+## NGL redesign — step 2: screens (2026-10-12)
+
+Every screen restyled to the approved prototype (`test/anix-ngl.html`):
+
+- **Auth**: gradient hero (floating glossy ghost, `.sticker-logo`
+  wordmark, "say it. anonymously.", floating emoji) over a form card;
+  side by side ≥900px. Logic unchanged; autocomplete attrs added.
+- **Home**: big greeting + "who's spilling tea today?", "your links"
+  grid and "your rooms" list with n/3 counts, dashed "+ new" tiles,
+  `FunEmpty` playful empty states with gradient CTAs.
+- **LinkCard** rewritten: links = gradient band ("anon messages" until
+  step 3 games) + avatar/@handle/url; rooms = tappable enter row (photo
+  or emoji, live count, open/closed pill, chevron). Shared action row:
+  Copy link / lock-unlock (rooms) / settings / delete (ConfirmDialog).
+- **ItemSettingsSheet** (from LinkCard + chat-room owner gear): photo
+  (`PhotoPicker`, remove confirms), vibe swatches, room open toggle,
+  delete. Saves as you go.
+- **CreateLinkModal** (`kind` prop now, not `title`): live preview card,
+  name, photo, vibe, rooms "open the room now" (Home calls
+  setRoomStatus after createRoom, which always creates closed).
+- Rooms read `room.emoji` with fallback `DEFAULT_ROOM_EMOJI` (💬,
+  `shared/room-defaults.js`) — step 3 adds the field/picker.
+- **Chats**: "inbox" + count line, filter chips (≥2 links), one merged
+  newest-first grid of tilted `MessageCard`s; copy-as-image is an icon
+  button in the card footer. Sealed tiles / reveal / answer = step 3.
+- **Profile**: gradient "hey you" card, stats (messages — "50+" past the
+  inbox page size — links, rooms), settings card rows (ThemeToggle /
+  NotificationToggle are now rows with `.toggle` switches), install row,
+  feedback opens a "talk to us" sheet with bug/idea/love — saved as a
+  new `kind` field (feedback rule accepts any fields). Sign out confirms.
+- **Chat room**: `theme-vars.js` deleted — rooms no longer force dark
+  surfaces; the room's gradient (`--msg-from/--msg-to`) drives the header
+  band and own bubbles, `--primary` is overridden to the room color.
+  Header shows photo/emoji, live presence count, owner-only settings
+  gear. White/gradient bubbles with pop-in, ink action pill, pill
+  composer with image button + round ink send.
+- **Sender page**: "get your own messages!" white pill (→ /auth) on the
+  form, sent and not-found states. (The prototype's "N people tapped the
+  button" counter was left out — no real number behind it.)
+- Shared: `.field`, `.section-label`, `.icon-btn`, `.toggle`, `.opt-row`,
+  `.chip`, `.pop-in`, `.sticker-logo` in index.css; new icons Trash,
+  Lock, Unlock, ChevronRight, Share. Toasts = top-centered ink pills
+  (red for errors). Removed: Card.jsx/.css, ThemeToggle.css,
+  EmptyState use in chat (component kept), greeting prompts for
+  Chats/Profile, .home-section/.page-greeting.
+- Floating install card: above the nav pill in the shell, top of the
+  page on auth/sender, hidden in chat rooms.
+- Desktop: page content capped at an 880px centered column (fixed
+  brand header aligned with viewport math — % padding on a fixed
+  element resolves against the viewport).
+- Verified with a throwaway Vite config that mocked auth/messages/inbox
+  modules (screens rendered with sample data, light + dark + desktop).
+
+## NGL redesign — step 3: features + backend (2026-10-12)
+
+- **Games** (`src/shared/games.js`): ama (default), tbh, 3 words, never
+  have i ever, confessions, dealbreaker, cancelled, custom — each with
+  its own gradient, prompt and dice ideas. Endpoints store `game` + the
+  resolved `prompt` text (custom = owner's words, ≤80 chars, enforced in
+  rules). Stored resolved so linkPreview/older clients need no game list.
+  Set right after `createMessageEndpoint` via `updateEndpointSettings`
+  (same path as photo) — no create-function change. Links without
+  `game` read as ama for colors; `headerOf`/`promptOf` handle legacy.
+- **Messages snapshot** `game`, `prompt` and `read: false` on send
+  (`sendAnonymousMessage(endpointId, text, { game, prompt })`). Messages
+  from before have no `read` → treated as read; no `game` → header
+  "send me anonymous messages!" in brand purple.
+- **Sealed inbox**: unread = `read === false` → gradient "💌 new
+  message!" tile; tap → `MessageSheet` (flip reveal, `markMessageRead`),
+  answer (≤500) + **Answer & share** (saves `answer`/`answeredAt`, then
+  native share sheet with the PNG → clipboard → download), Preview
+  renders the real PNG, delete behind ConfirmDialog.
+- **Rules** (endpoint messages): owner may update ONLY
+  read/answer/answeredAt (typed; answeredAt must be request.time) and
+  may delete. Endpoint update: prompt string ≤80 or null.
+- **Unread counts**: `useUnreadCounts(uid)` → nav Chats badge + Home
+  link-card "N new 👀" + Chats subtitle ("N unopened 👀 tap to reveal").
+- **Share image** (`generateMessageImageBlob({ text, header, colors,
+  answer, bannerImageUrl })`): game gradient + header, optional answer
+  in big white type under the card ("anonymous asked ✦ i answered").
+- **Sender page**: link's prompt, small game tag by @handle, 🎲 dice
+  (random idea for the game), sends the snapshot.
+- **Rooms**: `emoji` field (EmojiPicker in create + settings; shown in
+  cards and the chat header; fallback 💬). Set via updateRoomSettings
+  after createRoom.
+- **Link settings**: GamePicker (presets save on tap; custom has a
+  "Save prompt" button).
+- **Functions**: linkPreview description uses the endpoint's `prompt`;
+  endpoint-message push body quotes the prompt answered.
+- **Admin**: feedback rows show the kind (🐞/💡/💜).
+- Deploy order matters: **firestore rules before hosting** — the new
+  client writes read/answer and deletes messages, which the old rules
+  reject.

@@ -3,7 +3,7 @@
   align-items: center;
   gap: 12px;
   padding: 14px;
-  border-radius: 16px;
+  border-radius: 24px;
   border: 1px solid var(--border);
   background: var(--panel);
 }
@@ -12,9 +12,11 @@
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
   z-index: 60;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  max-width: 520px;
+  margin: 0 auto;
+  box-shadow: 0 18px 40px -16px rgba(40, 10, 70, 0.5);
   animation: install-card-in var(--duration-bounce) var(--ease-bounce);
 }
 
@@ -86,4 +88,21 @@
     bottom: 24px;
     max-width: 360px;
   }
+}
+
+/* Keep the floating card off each page's main action: above the nav pill
+   inside the app shell; at the top on the full-bleed gradient pages
+   (sign-up, sender page) whose CTAs sit low; hidden mid-conversation in
+   a chat room (Profile keeps a permanent install row). */
+body:has(.nav-bar--bottom) .install-card--floating {
+  bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+body:has(.auth-screen, .anon-message) .install-card--floating {
+  top: calc(12px + env(safe-area-inset-top));
+  bottom: auto;
+}
+
+body:has(.chat-room) .install-card--floating {
+  display: none;
 }

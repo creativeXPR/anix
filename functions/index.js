@@ -174,9 +174,13 @@ exports.onEndpointMessage = onDocumentCreated(
   async (event) => {
     const endpoint = (await db.doc(`messageEndpoints/${event.params.endpointId}`).get()).data()
     if (!endpoint?.ownerId) return
+    // Messages snapshot the prompt they answered (NGL redesign games).
+    const prompt = event.data?.data()?.prompt
     await sendToOwner(endpoint.ownerId, {
-      title: 'New anonymous message',
-      body: `Someone sent you a message on ${endpoint.handle}.`,
+      title: 'New anonymous message 💌',
+      body: prompt
+        ? `Someone answered "${prompt}" on ${endpoint.handle}.`
+        : `Someone sent you a message on ${endpoint.handle}.`,
     })
   },
 )
@@ -325,8 +329,14 @@ exports.linkPreview = onRequest(async (req, res) => {
     const handle = data?.handle || id
     const image = data?.bannerImageUrl || DEFAULT_BANNER
     const title = kind === 'r' ? `Join ${handle} on Anix` : `Send ${handle} an anonymous message`
+    // Links store their resolved prompt text since the NGL redesign's
+    // games (e.g. "describe me in 3 words") — show it in the preview.
     const description =
-      kind === 'r' ? 'An anonymous chat room on Anix.' : 'Send an anonymous message on Anix.'
+      kind === 'r'
+        ? 'An anonymous chat room on Anix.'
+        : data?.prompt
+          ? `"${data.prompt}" — answer anonymously on Anix.`
+          : 'Send an anonymous message on Anix.'
 
     res.set('Cache-Control', 'public, max-age=300')
     res.status(200).send(injectMeta(INDEX_TEMPLATE, { title, description, image }))

@@ -1,0 +1,35 @@
+.message-sheet__card .message-card__header {
+  padding: 18px;
+  font-size: 26px;
+}
+
+.message-sheet__card .message-card__text {
+  padding: 30px 22px;
+  font-size: 22px;
+}
+
+/* A sealed message flipping open (#004-E). */
+.message-sheet__card--reveal {
+  animation: message-sheet-flip 0.55s var(--ease-bounce) both;
+}
+
+.message-sheet__preview {
+  display: block;
+  width: 210px;
+  margin: 0 auto;
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+@keyframes message-sheet-flip {
+  from {
+    opacity: 0;
+    transform: perspective(700px) rotateY(80deg) scale(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-sheet__card--reveal {
+    animation: none;
+  }
+}

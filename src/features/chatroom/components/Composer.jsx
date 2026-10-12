@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import Button from '../../../shared/components/Button.jsx'
+import ArrowRightIcon from '../../../shared/icons/ArrowRightIcon.jsx'
 import CloseIcon from '../../../shared/icons/CloseIcon.jsx'
+import ImageIcon from '../../../shared/icons/ImageIcon.jsx'
 import './Composer.css'
 
 const TYPING_STOP_DELAY_MS = 2000
@@ -49,7 +50,9 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
           {replyTo.imageUrl && (
             <img className="composer__reply-thumb" src={replyTo.imageUrl} alt="" />
           )}
-          <span>Replying to: {replyTo.text || (replyTo.imageUrl ? 'Photo' : '')}</span>
+          <span>
+            <b>replying to</b> {replyTo.text || (replyTo.imageUrl ? 'Photo' : '')}
+          </span>
           <button type="button" onClick={onCancelReply} aria-label="Cancel reply">
             <CloseIcon />
           </button>
@@ -58,7 +61,7 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
 
       {imageFile && (
         <div className="composer__image-preview">
-          <span>{imageFile.name}</span>
+          <span>📷 {imageFile.name}</span>
           <button
             type="button"
             onClick={() => {
@@ -72,15 +75,16 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
         </div>
       )}
 
+      {/* NGL redesign: one floating pill — image button, text, round send. */}
       <div className="composer__row">
         <button
           type="button"
-          className="composer__attach"
+          className="icon-btn composer__attach"
           onClick={() => fileInputRef.current?.click()}
           aria-label="Attach image"
           disabled={disabled}
         >
-          +
+          <ImageIcon />
         </button>
         <input
           ref={fileInputRef}
@@ -94,13 +98,20 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
           value={text}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? 'This room is closed' : 'Message…'}
+          placeholder={disabled ? 'this room is closed' : 'say something anonymous…'}
+          aria-label="Message"
           rows={1}
           disabled={disabled}
         />
-        <Button className="composer__send" onClick={handleSend} disabled={disabled}>
-          Send
-        </Button>
+        <button
+          type="button"
+          className="composer__send"
+          onClick={handleSend}
+          disabled={disabled || (!text.trim() && !imageFile)}
+          aria-label="Send"
+        >
+          <ArrowRightIcon />
+        </button>
       </div>
     </div>
   )

@@ -87,19 +87,41 @@ service cloud.firestore {
     }
 
     match /messageEndpoints/{endpointId} {
+      function isEndpointOwner() {
+        return request.auth != null
+          && get(/databases/$(database)/documents/messageEndpoints/$(endpointId)).data.ownerId == request.auth.uid;
+      }
+
       allow get: if true;
       allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
       allow create: if false;
-      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      // Owner edits settings (photo, vibe, and since the NGL redesign the
+      // prompt game: `game` + resolved `prompt` text, capped at 80 chars).
+      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid
+        && (!('prompt' in request.resource.data)
+          || request.resource.data.prompt == null
+          || (request.resource.data.prompt is string && request.resource.data.prompt.size() <= 80));
       allow delete: if false;
 
       // Anonymous senders write with no auth at all (that's the
       // feature); only the endpoint's owner can ever read messages back.
       match /messages/{messageId} {
         allow create: if true;
-        allow read: if request.auth != null
-          && get(/databases/$(database)/documents/messageEndpoints/$(endpointId)).data.ownerId == request.auth.uid;
-        allow update, delete: if false;
+        allow read: if isEndpointOwner();
+        // NGL redesign (2026-10-12): the owner opens sealed messages
+        // (`read`) and answers them (`answer`/`answeredAt`) — those three
+        // fields only; the message text/game/prompt stay immutable.
+        allow update: if isEndpointOwner()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'answer', 'answeredAt'])
+          && (!('read' in request.resource.data) || request.resource.data.read is bool)
+          && (!('answer' in request.resource.data)
+            || request.resource.data.answer == null
+            || (request.resource.data.answer is string && request.resource.data.answer.size() <= 500))
+          && (!('answeredAt' in request.resource.data)
+            || request.resource.data.answeredAt == null
+            || request.resource.data.answeredAt == request.time);
+        // The owner can delete a message they received (behind a confirm).
+        allow delete: if isEndpointOwner();
       }
     }
 

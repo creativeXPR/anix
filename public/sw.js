@@ -30,7 +30,7 @@ messaging.onBackgroundMessage((payload) => {
   const { title, body } = payload.notification || {}
   self.registration.showNotification(title || 'Anix', {
     body,
-    icon: '/icon.jpg',
-    badge: '/icon.jpg',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
   })
 })

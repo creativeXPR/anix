@@ -58,58 +58,89 @@ export default function AuthScreen() {
     }
   }
 
+  const signIn = mode === 'sign-in'
+
+  // NGL-style: gradient hero (glossy ghost, sticker wordmark, headline,
+  // floating emoji) over a form card — side by side at desktop width.
   return (
-    <section className="screen auth-screen">
-      <div className="auth-screen__brand">
-        <img src="/icon.jpg" alt="" className="auth-screen__brand-logo" />
-        <span>Anix</span>
+    <section className="auth-screen">
+      <div className="auth-screen__hero">
+        <span className="auth-screen__floaty" style={{ top: '12%', left: '8%' }} aria-hidden="true">
+          👋
+        </span>
+        <span className="auth-screen__floaty" style={{ top: '16%', right: '9%', animationDelay: '.6s' }} aria-hidden="true">
+          💌
+        </span>
+        <span className="auth-screen__floaty" style={{ top: '38%', left: '6%', animationDelay: '1.1s' }} aria-hidden="true">
+          👀
+        </span>
+        <span className="auth-screen__floaty" style={{ top: '42%', right: '7%', animationDelay: '.3s' }} aria-hidden="true">
+          🔥
+        </span>
+        <img src="/icon.svg" alt="" className="auth-screen__ghost" />
+        <span className="sticker-logo auth-screen__sticker">anix</span>
+        <h1 className="auth-screen__headline">
+          say it.
+          <br />
+          anonymously.
+        </h1>
       </div>
 
-      <h1>{mode === 'sign-in' ? 'Sign in' : 'Sign up'}</h1>
+      <div className="auth-screen__card">
+        <form className="auth-screen__form" onSubmit={handleSubmit}>
+          <h2>{signIn ? 'welcome back' : 'join the fun'}</h2>
+          <input
+            className="field"
+            type="email"
+            placeholder="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+          <input
+            className="field"
+            type="password"
+            placeholder="password"
+            autoComplete={signIn ? 'current-password' : 'new-password'}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            minLength={6}
+          />
+          <Button type="submit" block loading={pendingAction === 'email'} disabled={pendingAction === 'google'}>
+            {signIn ? 'Sign in' : 'Sign up'}
+          </Button>
+        </form>
 
-      <form className="auth-screen__form" onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          minLength={6}
-        />
-        <Button
-          type="submit"
-          loading={pendingAction === 'email'}
-          disabled={pendingAction === 'google'}
+        {signIn && (
+          <Button
+            variant="secondary"
+            block
+            onClick={handleGoogleSignIn}
+            loading={pendingAction === 'google'}
+            disabled={pendingAction === 'email'}
+          >
+            Continue with Google
+          </Button>
+        )}
+
+        <button
+          type="button"
+          className="auth-screen__switch"
+          onClick={() => setMode((current) => (current === 'sign-in' ? 'sign-up' : 'sign-in'))}
         >
-          {mode === 'sign-in' ? 'Sign in' : 'Sign up'}
-        </Button>
-      </form>
-
-      {mode === 'sign-in' && (
-        <Button
-          variant="secondary"
-          onClick={handleGoogleSignIn}
-          loading={pendingAction === 'google'}
-          disabled={pendingAction === 'email'}
-        >
-          Continue with Google
-        </Button>
-      )}
-
-      <button
-        type="button"
-        className="auth-screen__switch text-b3"
-        onClick={() => setMode((current) => (current === 'sign-in' ? 'sign-up' : 'sign-in'))}
-      >
-        {mode === 'sign-in' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-      </button>
+          {signIn ? (
+            <>
+              new here? <b>sign up</b>
+            </>
+          ) : (
+            <>
+              already have an account? <b>sign in</b>
+            </>
+          )}
+        </button>
+      </div>
     </section>
   )
 }

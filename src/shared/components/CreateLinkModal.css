@@ -1,13 +1,52 @@
-.modal input[type='text'] {
-  width: 100%;
-  min-width: 0;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-h);
-  font: inherit;
-  box-sizing: border-box;
+/* Live preview of the room/link being created, in its chosen vibe. */
+.create-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 22px;
+  background: linear-gradient(120deg, var(--msg-from), var(--msg-to));
+  color: #ffffff;
+  transition: background 0.3s var(--ease-standard);
 }
 
+.create-preview__badge {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  object-fit: cover;
+}
+
+.create-preview__badge--emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.create-preview div {
+  min-width: 0;
+}
+
+.create-preview b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 22px/1.1 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.create-preview small {
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.create-note {
+  margin: 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}

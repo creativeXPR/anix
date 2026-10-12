@@ -18,7 +18,7 @@ export default function InstallCard({ floating = false, dismissible = false }) {
 
   return (
     <div className={`install-card${floating ? ' install-card--floating' : ''}`}>
-      <img src="/icon.jpg" alt="" className="install-card__icon" />
+      <img src="/icon.svg" alt="" className="install-card__icon" />
       <div className="install-card__copy">
         <strong>Anix</strong>
         <span className="text-b4">Anonymous chat &amp; messages</span>

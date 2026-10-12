@@ -1,14 +1,21 @@
-/* Design system from Stores/CLAUDE.md #003-27, recolored around #ff3d7c
-   (previously #b433c8 — the user changed their mind on 2026-09-19; see
-   Anix's own CLAUDE.md for the full decision record). Dark is the
-   default; [data-theme="light"] (toggled from the Profile screen, not
-   the OS) is a hand-authored counterpart since 003-27 didn't document
-   one. */
+/* Design system: NGL-style redesign (Stores/CLAUDE.md #003-30, 2026-10-12)
+   on the app icon's purple. Light is the default; [data-theme="dark"]
+   (toggled from Profile) is the counterpart. Token names are kept from
+   the original #003-27 system so existing components restyle in place. */
 :root {
-  /* Primary — 3-step ramp built around #ff3d7c */
-  --primary-light: #f797b6;
-  --primary: #ff3d7c;
-  --primary-dark: #c2003f;
+  /* Primary — 3-step ramp from the app icon's ghost purple (≈#5b0e98).
+     The brand is purple (icon), not the #ff3d7c pink this file used
+     from 2026-09-19 to 2026-10-12. */
+  --primary-light: #b07cf0;
+  --primary: #7b1fd4;
+  --primary-dark: #5b0e98;
+
+  /* The NGL-style brand gradient (Design Playbook 003-30): ghost purple
+     brightened into orchid. Used on CTAs, the active nav item, hero
+     bands; per-room/link themes swap the pair via message-gradient.js. */
+  --grad-from: #7b1fd4;
+  --grad-to: #d23fc0;
+  --grad: linear-gradient(135deg, var(--grad-from), var(--grad-to));
 
   /* Pastel (5-swatch) */
   --pastel-lavender-pink: #e8c6f0;
@@ -17,21 +24,31 @@
   --pastel-sky: #b8d4f7;
   --pastel-blush: #f7dde0;
 
-  /* Neutrals — dark surface ladder */
-  --bg: #120a16;
-  --panel: #1c1220;
-  --panel-alt: #241631;
-  --panel-new: #1c1220;
-  --border: #33253b;
-  --text: #c9c0cf;
-  --text-h: #f6f1f8;
-  --text-muted: #8d8393;
+  /* Neutrals — light is the default since the NGL redesign: a faint
+     lavender canvas (the icon's background) with white cards on it. */
+  --bg: #f8f5fd;
+  --panel: #ffffff;
+  --panel-alt: #f0e8fb;
+  --panel-new: #ffffff;
+  --border: #e8ddf5;
+  --text: #3a2f45;
+  --text-h: #120c16;
+  --text-muted: #7a6f86;
+
+  /* Black "ink" pills (NGL's Send!/Copy link buttons) — flip to white in
+     dark mode so they keep maximum contrast against the surface. */
+  --ink: #111111;
+  --on-ink: #ffffff;
+  --shadow: 0 12px 30px -16px rgba(60, 20, 110, 0.32);
+  --thumb: rgba(60, 20, 110, 0.2);
+  --thumb-hover: rgba(60, 20, 110, 0.38);
 
   /* Secondary (two greens, pink, magenta) */
-  --secondary-green: #3ecf8e;
-  --secondary-green-alt: #2a9d6f;
-  --secondary-pink: #ff6fa5;
+  --secondary-green: #22c55e;
+  --secondary-green-alt: #16a34a;
+  --secondary-pink: #e5294b;
   --secondary-magenta: #e0479f;
+  --danger: #ef2b4b;
 
   /* Alias so existing components (NavBar active pill, own-message bubble,
      buttons) that already reference --accent/--accent-bg pick this up.
@@ -39,26 +56,27 @@
      override (see ChatRoomScreen's themeColor) actually cascades into
      these tinted backgrounds too, not just flat --accent uses. */
   --accent: var(--primary);
-  --accent-bg: color-mix(in srgb, var(--primary) 22%, transparent);
-  --accent-border: color-mix(in srgb, var(--primary) 50%, transparent);
+  --accent-bg: color-mix(in srgb, var(--primary) 12%, transparent);
+  --accent-border: color-mix(in srgb, var(--primary) 40%, transparent);
 
-  --font-display: 'Poppins', system-ui, 'Segoe UI', sans-serif;
+  /* Heavy display face for headlines/prompts/buttons (NGL's punch);
+     Poppins stays for body text. */
+  --font-display: 'Bricolage Grotesque', 'Poppins', system-ui, 'Segoe UI', sans-serif;
   --font-body: 'Poppins', system-ui, 'Segoe UI', sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  /* Shared motion tokens (#004-F) — reused everywhere instead of
-     hand-tuning each animation. The bounce pair stays reserved for the
-     one signature moment (bubble-action reveal), per Anime-space's
-     philosophy of one deliberate accent rather than bounce everywhere. */
+  /* Shared motion tokens (#004-F). Since the NGL redesign the bounce pair
+     is the app's signature motion everywhere ("bouncy stickers": pops,
+     squish on press, sheets springing back), not a one-off accent. */
   --duration-fast: 0.15s;
   --ease-standard: ease;
   --duration-bounce: 0.22s;
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  --blur: blur(30px);
+  --blur: blur(10px);
 
   font: 400 14px/145% var(--font-body);
-  color-scheme: dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -67,23 +85,60 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-:root[data-theme='light'] {
-  --bg: #fdf8ff;
-  --panel: #f3e9f7;
-  --panel-alt: #ecdaf2;
-  --border: #ddc8e3;
-  --text: #4a3a52;
-  --text-h: #1c0f22;
-  --text-muted: #7a6683;
+/* Dark — opt-in from Profile (stored as anix:theme-v2, see theme-store.js). */
+:root[data-theme='dark'] {
+  --bg: #120a16;
+  --panel: #1d1226;
+  --panel-alt: #281a33;
+  --panel-new: #1d1226;
+  --border: #33233f;
+  --text: #e3d8ea;
+  --text-h: #ffffff;
+  --text-muted: #a998b0;
 
-  --panel-new: #f6f0f9; 
+  --ink: #ffffff;
+  --on-ink: #111111;
+  --shadow: 0 12px 30px -14px rgba(0, 0, 0, 0.7);
+  --thumb: rgba(255, 255, 255, 0.18);
+  --thumb-hover: rgba(255, 255, 255, 0.34);
 
-  --accent-bg: color-mix(in srgb, var(--primary) 12%, transparent);
-  --accent-border: color-mix(in srgb, var(--primary) 40%, transparent);
+  --accent-bg: color-mix(in srgb, var(--primary) 22%, transparent);
+  --accent-border: color-mix(in srgb, var(--primary) 50%, transparent);
 
-  --blur: blur(10px);
+  --blur: blur(30px);
 
-  color-scheme: light;
+  color-scheme: dark;
+}
+
+/* Scrollbars blend in: thin and invisible until the pointer is over the
+   scrolling element, then a soft thumb fades in. Standard properties for
+   Firefox / Chrome 121+, -webkit- fallback for Safari. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: var(--thumb) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+:hover::-webkit-scrollbar-thumb {
+  background-color: var(--thumb);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--thumb-hover);
 }
 
 * {
@@ -94,32 +149,30 @@ body {
   margin: 0;
 }
 
-/* Poppins weight-differentiated scale, per 003-27 (H4/B1 share a size but
-   differ in weight — the scale leans on weight as much as size). */
+/* Headings: the heavy display face, tight and lowercase-friendly (NGL). */
 h1,
 h2,
 h3,
 h4 {
   font-family: var(--font-display);
+  font-weight: 800;
   color: var(--text-h);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
   margin: 0;
 }
 
 h1 {
   font-size: 40px;
-  font-weight: 600;
 }
 h2 {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 26px;
 }
 h3 {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
 }
 h4 {
   font-size: 16px;
-  font-weight: 600;
 }
 
 .text-b1 {
@@ -144,27 +197,253 @@ h4 {
   margin: 0;
 }
 
-/* Home/Profile/Chats' time-of-day/contextual greeting line. */
-.page-greeting {
-  font-size: 18px;
-  font-weight: 600;
+
+
+/* Shared text input (NGL redesign): big, soft-cornered, a 2px border
+   that turns brand purple on focus. Use on <input>/<textarea>. */
+.field {
+  width: 100%;
+  min-width: 0;
+  height: 54px;
+  padding: 0 18px;
+  border-radius: 18px;
+  border: 2px solid var(--border);
+  background: var(--panel);
   color: var(--text-h);
-  margin: 0;
+  font: 500 16px var(--font-body);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
-/* A titled group of cards (Home's rooms/links, Chats' per-endpoint
-   inbox) — shared since both screens use the same pattern. */
-.home-section {
+.field::placeholder {
+  color: var(--text-muted);
+}
+
+.field:focus {
+  border-color: var(--primary);
+}
+
+textarea.field {
+  height: auto;
+  min-height: 110px;
+  padding: 16px 18px;
+  resize: none;
+}
+
+/* A small label above a sheet section ("vibe", "pick a game"). */
+.section-label {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px;
-  background: var(--panel-new);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  backdrop-filter: var(--blur);
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 8px;
+  font: 800 20px/1 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--text-h);
 }
 
-.home-section h3 {
-  margin-bottom: 2px;
+.section-label small {
+  font: 600 12px var(--font-body);
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+/* The "anix" sticker wordmark: white heavy letters with a thick black
+   outline and a slight tilt (NGL's logo treatment, 003-30). */
+.sticker-logo {
+  display: inline-block;
+  font: 800 26px/1 var(--font-display);
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  -webkit-text-stroke: 5px #111111;
+  paint-order: stroke fill;
+  transform: rotate(-4deg);
+}
+
+/* Round 44px icon button (settings / delete / lock on cards). */
+.icon-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--panel-alt);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* On/off switch — a <button role="switch" aria-checked>. */
+.toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 54px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s var(--ease-bounce);
+}
+
+.toggle[aria-checked='true'] {
+  background: var(--primary);
+}
+
+.toggle[aria-checked='true']::after {
+  transform: translateX(22px);
+}
+
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* A settings row inside a sheet or card: label + hint on the left, a
+   control (toggle / button) on the right. */
+.opt-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.opt-row b {
+  display: block;
+  color: var(--text-h);
+  font-weight: 700;
+}
+
+.opt-row small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.opt-row > :last-child {
+  margin-left: auto;
+}
+
+/* Generic entrance pop for cards/tiles (#004-E "bouncy stickers"). */
+.pop-in {
+  animation: pop-in 0.32s var(--ease-bounce) both;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-in {
+    animation: none;
+  }
+}
+
+/* Filter chip — a <button role="tab" aria-selected>. */
+.chip {
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 16px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text-h);
+  font: 600 14px var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.chip:active {
+  transform: scale(0.95);
+}
+
+.chip[aria-selected='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+/* A game's title as NGL renders it on its cards: heavy white display
+   type; `--loud` games get outlined caps (3 WORDS, NEVER HAVE I EVER). */
+.game-title {
+  color: #ffffff;
+  font: 800 24px/1 var(--font-display);
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.game-title--loud {
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  -webkit-text-stroke: 4px #111111;
+  paint-order: stroke fill;
+  text-shadow: none;
+}
+
+.emoji-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px;
+  margin: -4px;
+}
+
+.emoji-picker__option {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 16px;
+  background: var(--panel);
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-bounce);
+}
+
+.emoji-picker__option:active:not(:disabled) {
+  transform: scale(0.88);
+}
+
+.emoji-picker__option[aria-checked='true'] {
+  background: linear-gradient(135deg, var(--msg-from, var(--grad-from)), var(--msg-to, var(--grad-to)));
+  transform: scale(1.08);
 }

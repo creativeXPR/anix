@@ -1,48 +1,89 @@
+/* Pill buttons in the display face (NGL redesign). Variants:
+   primary — black "ink" pill (white in dark mode): the main action.
+   grad    — brand gradient: celebratory CTAs (empty-state "start one").
+   secondary — soft lavender pill: cancel / secondary actions.
+   danger  — red: the confirm step of destructive actions. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 20px;
+  height: 48px;
+  padding: 0 22px;
   border-radius: 999px;
   border: none;
-  font: inherit;
-  font-weight: 600;
+  font: 800 16px/1 var(--font-display);
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-standard), transform 0.1s ease;
+  text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-standard), filter var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .btn--primary {
-  background: var(--primary);
-  color: var(--text-h);
+  background: var(--ink);
+  color: var(--on-ink);
 }
 
-.btn--primary:hover {
-  background: var(--primary-dark);
-}
-
-.btn--primary:active {
-  background: var(--primary-dark);
-  transform: scale(0.97);
+.btn--grad {
+  background: var(--grad);
+  color: #ffffff;
+  box-shadow: 0 10px 22px -10px var(--grad-from);
 }
 
 .btn--secondary {
   background: var(--panel-alt);
   color: var(--text-h);
-  border: 1px solid var(--border);
 }
 
-.btn--secondary:hover {
+.btn--secondary:hover:not(:disabled) {
+  filter: none;
   background: var(--border);
 }
 
-.btn--secondary:active {
-  transform: scale(0.97);
+.btn--danger {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.btn--sm {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.btn--sm svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn--block {
+  width: 100%;
+  height: 56px;
+  font-size: 18px;
 }
 
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
+}
+
+/* Spinner inside a button follows the button's text color (white on the
+   ink pill, etc.) instead of the accent purple it uses elsewhere. */
+.btn .spinner {
+  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
 }

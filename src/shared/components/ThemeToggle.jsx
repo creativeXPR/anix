@@ -1,19 +1,23 @@
 import { useTheme } from '../theme-store.js'
-import './ThemeToggle.css'
 
+// A settings row (Profile): dark mode on/off. Light is the default.
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
 
   return (
-    <label className="theme-toggle">
-      <span className="text-b3">Dark mode</span>
-      <input
-        type="checkbox"
-        className="theme-toggle__switch"
-        checked={theme === 'dark'}
-        onChange={toggleTheme}
-        aria-label="Toggle dark mode"
+    <div className="settings-row">
+      <span className="settings-row__emoji" aria-hidden="true">
+        🌙
+      </span>
+      <b>dark mode</b>
+      <button
+        type="button"
+        className="toggle"
+        role="switch"
+        aria-checked={theme === 'dark'}
+        aria-label="Dark mode"
+        onClick={toggleTheme}
       />
-    </label>
+    </div>
   )
 }

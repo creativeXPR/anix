@@ -1,0 +1,60 @@
+.photo-picker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 22px;
+  border: 2px dashed var(--border);
+  background: var(--panel);
+}
+
+.photo-picker__preview {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--primary);
+}
+
+.photo-picker__preview--emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  background: var(--panel-alt);
+}
+
+.photo-picker__copy {
+  min-width: 0;
+}
+
+.photo-picker__copy b {
+  display: block;
+  color: var(--text-h);
+  font-weight: 700;
+}
+
+.photo-picker__copy small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.photo-picker__actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.photo-picker__busy {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.photo-picker__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

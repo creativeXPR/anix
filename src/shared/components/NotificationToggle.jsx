@@ -3,7 +3,6 @@ import { useAuthUser } from '../auth-store.js'
 import { disablePush, enablePush, pushEnabled } from '../notifications.js'
 import { useToast } from '../toast-store.js'
 import Spinner from './Spinner.jsx'
-import './ThemeToggle.css'
 
 export default function NotificationToggle() {
   const { user } = useAuthUser()
@@ -11,8 +10,8 @@ export default function NotificationToggle() {
   const [enabled, setEnabled] = useState(pushEnabled)
   const [pending, setPending] = useState(false)
 
-  async function handleChange(event) {
-    const next = event.target.checked
+  async function handleChange() {
+    const next = !enabled
     setPending(true)
     try {
       if (next) {
@@ -34,20 +33,25 @@ export default function NotificationToggle() {
     }
   }
 
+  // A settings row (Profile), same shape as ThemeToggle.
   return (
-    <label className="theme-toggle">
-      <span className="text-b3">Notifications</span>
+    <div className="settings-row">
+      <span className="settings-row__emoji" aria-hidden="true">
+        🔔
+      </span>
+      <b>push notifications</b>
       {pending ? (
-        <Spinner size={16} />
+        <Spinner size={18} />
       ) : (
-        <input
-          type="checkbox"
-          className="theme-toggle__switch"
-          checked={enabled}
-          onChange={handleChange}
-          aria-label="Toggle push notifications"
+        <button
+          type="button"
+          className="toggle"
+          role="switch"
+          aria-checked={enabled}
+          aria-label="Push notifications"
+          onClick={handleChange}
         />
       )}
-    </label>
+    </div>
   )
 }

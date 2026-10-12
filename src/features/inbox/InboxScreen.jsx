@@ -1,132 +1,173 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../shared/auth-store.js'
-import Card from '../../shared/components/Card.jsx'
 import CardSkeleton from '../../shared/components/CardSkeleton.jsx'
-import EmptyState from '../../shared/components/EmptyState.jsx'
+import FunEmpty from '../../shared/components/FunEmpty.jsx'
+import MessageCard from '../../shared/components/MessageCard.jsx'
 import Page from '../../shared/components/Page.jsx'
-import Spinner from '../../shared/components/Spinner.jsx'
-import { useToast } from '../../shared/toast-store.js'
-import { getChatsPrompt } from '../../shared/utils/greetings.js'
-import { generateMessageImageBlob } from '../../shared/utils/message-image.js'
-import DownloadIcon from '../../shared/icons/DownloadIcon.jsx'
-import MessageIcon from '../../shared/icons/MessageIcon.jsx'
-import { subscribeToInbox, subscribeToOwnedEndpoints } from './inbox.js'
+import { gameGradientVars } from '../../shared/games.js'
+import { useCopyLink } from '../../shared/hooks/use-copy-link.js'
+import { timeAgo } from '../../shared/utils/time-ago.js'
+import { isUnread, subscribeToInbox, subscribeToOwnedEndpoints } from './inbox.js'
+import MessageSheet from './MessageSheet.jsx'
+import './InboxScreen.css'
 
-// Creating/deleting/theming a link lives on Home (alongside rooms) —
-// this screen is purely for reading what anonymous senders left you,
-// across all of your endpoints, and turning one into a shareable image.
-function EndpointInbox({ endpoint, onShare, onMessageCount }) {
-  const [messages, setMessages] = useState(null)
-  const [sharingId, setSharingId] = useState(null)
-
-  useEffect(
-    () =>
-      subscribeToInbox(endpoint.id, (nextMessages) => {
-        setMessages(nextMessages)
-        onMessageCount(endpoint.id, nextMessages.length)
-      }),
-    [endpoint.id, onMessageCount],
-  )
-
-  async function handleShare(message) {
-    setSharingId(message.id)
-    try {
-      await onShare(message, endpoint)
-    } finally {
-      setSharingId(null)
-    }
-  }
-
-  return (
-    <section className="home-section">
-      <h3>{endpoint.handle}</h3>
-      {messages === null ? (
-        <CardSkeleton />
-      ) : messages.length === 0 ? (
-        <p className="text-b3">No messages yet.</p>
-      ) : (
-        messages.map((message) => (
-          <Card key={message.id} icon={MessageIcon} title={message.text}>
-            <div className="card__actions">
-              <button
-                type="button"
-                className="card__pill-btn"
-                onClick={() => handleShare(message)}
-                disabled={sharingId === message.id}
-              >
-                {sharingId === message.id ? <Spinner size={14} /> : <DownloadIcon />}
-                Copy as image
-              </button>
-            </div>
-          </Card>
-        ))
-      )}
-    </section>
-  )
+// A stable small tilt per message (±2°), so cards sit like scattered
+// stickers (#004-E) without jumping around on every re-render.
+function tiltFor(id) {
+  let hash = 0
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) | 0
+  return `${((Math.abs(hash) % 400) / 100 - 2).toFixed(2)}deg`
 }
 
+// Creating/deleting/theming a link lives on Home — this screen is for
+// reading what anonymous senders left you, across all your links. Unread
+// messages are sealed tiles (NGL's "new message!" envelopes); tapping any
+// tile opens MessageSheet (reveal → answer & share / delete).
 export default function InboxScreen() {
   const { user } = useAuthUser()
-  const showToast = useToast()
+  const navigate = useNavigate()
+  const copyLink = useCopyLink()
   const [endpoints, setEndpoints] = useState(null)
-  const [messageCounts, setMessageCounts] = useState({})
+  const [inboxes, setInboxes] = useState({}) // endpointId -> messages
+  const [filter, setFilter] = useState('all')
+  const [openId, setOpenId] = useState(null)
 
   useEffect(() => subscribeToOwnedEndpoints(user.uid, setEndpoints), [user.uid])
 
-  const handleMessageCount = useCallback((endpointId, count) => {
-    setMessageCounts((current) => ({ ...current, [endpointId]: count }))
-  }, [])
+  useEffect(() => {
+    const unsubscribes = (endpoints || []).map((endpoint) =>
+      subscribeToInbox(endpoint.id, (messages) => setInboxes((current) => ({ ...current, [endpoint.id]: messages }))),
+    )
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
+  }, [endpoints])
 
-  const hasMessages = Object.values(messageCounts).some((count) => count > 0)
-  // Re-picked only when hasMessages actually flips, not on every render —
-  // getChatsPrompt() randomizes each call, and messageCounts updates
-  // constantly as Firestore snapshots land.
-  const prompt = useMemo(() => getChatsPrompt(hasMessages), [hasMessages])
+  const endpointById = useMemo(() => Object.fromEntries((endpoints || []).map((e) => [e.id, e])), [endpoints])
+  const loaded = endpoints !== null && endpoints.every((endpoint) => inboxes[endpoint.id])
 
-  async function handleShare(message, endpoint) {
-    try {
-      const blob = await generateMessageImageBlob(message.text, {
-        bannerImageUrl: endpoint.bannerImageUrl,
-        themeColor: endpoint.themeColor,
-      })
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-        showToast('Image copied — paste it into your status', 'success')
-      } catch {
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = 'anix-message.png'
-        link.click()
-        URL.revokeObjectURL(url)
-        showToast('Image downloaded', 'success')
-      }
-    } catch {
-      showToast('Could not generate image', 'error')
-    }
-  }
+  // One feed across every link, newest first. A brand-new message's
+  // createdAt is briefly null (serverTimestamp pending) — it sorts first.
+  const messages = useMemo(() => {
+    const all = Object.entries(inboxes).flatMap(([endpointId, list]) =>
+      endpointById[endpointId] ? list.map((message) => ({ ...message, endpointId })) : [],
+    )
+    const time = (message) => message.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER
+    return all.sort((a, b) => time(b) - time(a))
+  }, [inboxes, endpointById])
+
+  const visible = filter === 'all' ? messages : messages.filter((message) => message.endpointId === filter)
+
+  const unreadCount = messages.filter(isUnread).length
+  const subtitle = !loaded
+    ? ' '
+    : messages.length === 0
+      ? 'nothing yet — share your link 📭'
+      : unreadCount > 0
+        ? `${unreadCount} unopened 👀 tap to reveal`
+        : 'all caught up ✨'
+  const openMessage = openId && messages.find((message) => message.id === openId)
 
   return (
-    <Page title="Chats">
-      {endpoints !== null && endpoints.length > 0 && (
-        <p className="page-greeting">
-          {prompt.text} {prompt.emoji}
-        </p>
+    <Page title="inbox">
+      <p className="inbox-sub">{subtitle}</p>
+
+      {endpoints !== null && endpoints.length > 1 && (
+        <div className="inbox-filters" role="tablist" aria-label="Filter by link">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'all'}
+            className="chip"
+            onClick={() => setFilter('all')}
+          >
+            all
+          </button>
+          {endpoints.map((endpoint) => (
+            <button
+              key={endpoint.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === endpoint.id}
+              className="chip"
+              onClick={() => setFilter(endpoint.id)}
+            >
+              @{endpoint.handle}
+            </button>
+          ))}
+        </div>
       )}
 
-      {endpoints === null ? (
+      {endpoints === null || !loaded ? (
         <CardSkeleton />
       ) : endpoints.length === 0 ? (
-        <EmptyState icon={MessageIcon} title="Create an anonymous-message link on Home to start receiving messages" />
+        <FunEmpty
+          emoji="📭"
+          title="no link, no tea"
+          text="make an anonymous-message link on Home and the messages land here"
+          cta="Make a link"
+          onClick={() => navigate('/')}
+        />
+      ) : visible.length === 0 ? (
+        <FunEmpty
+          emoji="🦗"
+          title="crickets…"
+          text="share your link and let the chaos begin 👀"
+          cta="Copy your link"
+          onClick={() => {
+            const endpoint = endpointById[filter] || endpoints[0]
+            copyLink(`${window.location.origin}/m/${endpoint.id}/${endpoint.handle}`)
+          }}
+        />
       ) : (
-        endpoints.map((endpoint) => (
-          <EndpointInbox
-            key={endpoint.id}
-            endpoint={endpoint}
-            onShare={handleShare}
-            onMessageCount={handleMessageCount}
-          />
-        ))
+        <div className="inbox-grid">
+          {visible.map((message, index) => {
+            const endpoint = endpointById[message.endpointId]
+            const style = { '--tilt': tiltFor(message.id), animationDelay: `${Math.min(index, 8) * 40}ms` }
+            return isUnread(message) ? (
+              <button
+                key={message.id}
+                type="button"
+                className="inbox-card inbox-sealed pop-in"
+                style={{ ...gameGradientVars(message.game), ...style }}
+                onClick={() => setOpenId(message.id)}
+                aria-label={`New message on @${endpoint.handle}, tap to open`}
+              >
+                <span className="inbox-sealed__env" aria-hidden="true">
+                  💌
+                </span>
+                <b>new message!</b>
+                <small>
+                  {timeAgo(message.createdAt)} · @{endpoint.handle}
+                </small>
+              </button>
+            ) : (
+              <MessageCard
+                key={message.id}
+                message={message}
+                className="inbox-card"
+                style={style}
+                onClick={() => setOpenId(message.id)}
+                footer={
+                  <>
+                    <span>
+                      {timeAgo(message.createdAt)} · @{endpoint.handle}
+                    </span>
+                    {message.answer && <span className="inbox-answered">✓ answered</span>}
+                  </>
+                }
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {openMessage && (
+        <MessageSheet
+          key={openMessage.id}
+          message={openMessage}
+          endpoint={endpointById[openMessage.endpointId]}
+          onClose={() => setOpenId(null)}
+        />
       )}
     </Page>
   )

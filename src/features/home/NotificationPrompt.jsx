@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useAuthUser } from '../../shared/auth-store.js'
 import Button from '../../shared/components/Button.jsx'
+import Sheet from '../../shared/components/Sheet.jsx'
 import { enablePush, pushConfigured, pushEnabled } from '../../shared/notifications.js'
 import { useToast } from '../../shared/toast-store.js'
-import '../../shared/components/modal.css'
 
 // Only shown when permission is still undecided — 'granted'/'denied'
 // are final (a browser won't re-prompt on 'denied', asking again would
@@ -33,22 +33,20 @@ export default function NotificationPrompt() {
   }
 
   return (
-    <div className="modal-overlay" onClick={() => setDismissed(true)}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
-        <h2>Never miss a message</h2>
-        <p className="text-b3">
-          Turn on notifications to know the moment someone sends you an anonymous message, joins your room, or
-          something gets reported.
-        </p>
-        <div className="modal__actions">
-          <Button type="button" variant="secondary" onClick={() => setDismissed(true)} disabled={enabling}>
-            Not now
-          </Button>
-          <Button type="button" onClick={handleEnable} loading={enabling}>
-            Enable
-          </Button>
-        </div>
+    <Sheet onClose={() => setDismissed(true)}>
+      <h2>never miss a message 🔔</h2>
+      <p className="text-b3" style={{ margin: 0, color: 'var(--text-muted)' }}>
+        Turn on notifications to know the moment someone sends you an anonymous message, joins your room, or
+        something gets reported.
+      </p>
+      <div className="sheet__actions">
+        <Button variant="secondary" onClick={() => setDismissed(true)} disabled={enabling}>
+          Not now
+        </Button>
+        <Button variant="grad" onClick={handleEnable} loading={enabling}>
+          Enable
+        </Button>
       </div>
-    </div>
+    </Sheet>
   )
 }

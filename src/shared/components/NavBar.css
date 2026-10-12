@@ -1,57 +1,92 @@
+/* Black floating pill (NGL redesign, #001-B): a bottom bar on mobile /
+   tablet, a vertical rail at the left edge on desktop. It floats over
+   the content, so AppShell.css reserves the space it covers. */
 .nav-bar {
+  position: fixed;
+  z-index: 40;
   display: flex;
-  background: var(--bg);
+  gap: 6px;
+  padding: 7px;
+  border-radius: 999px;
+  background: #111111;
+  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme='dark'] .nav-bar {
+  background: #000000;
+  outline: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .nav-bar--bottom {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
   flex-direction: row;
-  justify-content: space-around;
-  align-items: center;
-  border-top: 1px solid var(--border);
-  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
 }
 
 .nav-bar--rail {
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  width: 76px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  padding: 16px 0;
 }
 
 .nav-bar__item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 50px;
   border-radius: 999px;
-  color: var(--text);
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  transition: background-color var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard);
+  transition: transform var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+
+.nav-bar__item:hover {
+  color: #ffffff;
+}
+
+.nav-bar__item:active {
+  transform: scale(0.9);
 }
 
 .nav-bar__item--active {
-  background: var(--accent-bg, rgba(128, 128, 128, 0.18));
-  color: var(--accent, var(--text-h));
+  background: var(--grad);
+  color: #ffffff;
+  animation: nav-pop 0.3s var(--ease-bounce);
 }
 
 .nav-bar__icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
-@media (min-width: 900px) {
-  .nav-bar__icon {
-    width: 22px;
-    height: 22px;
+@keyframes nav-pop {
+  from {
+    transform: scale(0.8);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-bar__item--active {
+    animation: none;
+  }
+}
+
+/* Unread count on Chats — a white pill so it reads on the black bar. */
+.nav-bar__badge {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+  font: 700 11px/18px var(--font-body);
+  text-align: center;
+  animation: nav-pop 0.3s var(--ease-bounce);
 }

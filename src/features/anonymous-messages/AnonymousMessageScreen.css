@@ -1,79 +1,240 @@
+/* NGL-style compose page. Colors are fixed light-on-gradient rather than
+   app tokens: this is the public face a link visitor sees, themed only
+   by the endpoint's --msg-from/--msg-to (see message-gradient.js), and
+   should look the same whichever app theme the visitor's device has. */
 .anon-message {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   min-height: 100svh;
-  /* Explicit, not inherited — see the identical note in
-     ChatRoomScreen.css: a themed endpoint overrides --bg on this
-     element, which needs its own background rule to actually show it. */
-  background: var(--bg);
-  color: var(--text);
+  padding: 32px 16px calc(32px + env(safe-area-inset-bottom));
+  background: linear-gradient(160deg, var(--msg-from), var(--msg-to));
+  color: #ffffff;
 }
 
-.anon-message__header {
-  flex-shrink: 0;
-}
-
-.anon-message__banner {
-  display: block;
-  width: 100%;
-  height: 220px;
-  object-fit: cover;
-}
-
-.anon-message__banner--placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 50% 40%, var(--accent-bg), var(--bg) 70%);
-}
-
-.anon-message__logo {
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
-  object-fit: cover;
-}
-
-.anon-message__body {
-  flex: 1;
+.anon-message__inner {
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  gap: 20px;
-  padding: 32px 24px;
-  text-align: center;
-}
-
-.anon-message__body h1 {
-  font-size: 26px;
+  width: 100%;
+  max-width: 440px;
 }
 
 .anon-message__form {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.anon-message__card {
+  border-radius: 28px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.35);
+}
+
+.anon-message__card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #ffffff;
+  color: #111111;
+}
+
+.anon-message__avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.anon-message__handle {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555555;
+  overflow-wrap: anywhere;
+}
+
+.anon-message__prompt {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  line-height: 1.25;
+}
+
+.anon-message__card textarea {
+  display: block;
   width: 100%;
-  max-width: 380px;
-}
-
-.anon-message__form textarea {
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text-h);
+  min-height: 170px;
+  padding: 20px 18px;
+  border: none;
+  background: transparent;
+  color: #111111;
   font: inherit;
-  resize: vertical;
-  min-height: 120px;
+  font-size: 18px;
+  font-weight: 600;
+  resize: none;
+  outline: none;
 }
 
-@media (min-width: 600px) {
-  .anon-message__banner {
-    height: 280px;
-  }
+.anon-message__card textarea::placeholder {
+  color: rgba(17, 17, 17, 0.45);
+}
 
-  .anon-message__body {
-    padding: 48px 24px;
+.anon-message__card:focus-within {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.7),
+    0 18px 40px -18px rgba(0, 0, 0, 0.35);
+}
+
+.anon-message__note {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.anon-message__error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Big black pill, NGL's "Send!" — overrides Button's themed primary. */
+.anon-message .anon-message__send {
+  height: 58px;
+  width: 100%;
+  background: #111111;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.anon-message .anon-message__send:hover:not(:disabled) {
+  background: #000000;
+}
+
+.anon-message .anon-message__send:disabled {
+  opacity: 0.82;
+  cursor: not-allowed;
+}
+
+.anon-message__sent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  animation: anon-message-pop var(--duration-bounce) var(--ease-bounce) both;
+}
+
+.anon-message__sent-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--msg-from);
+  font-size: 42px;
+  font-weight: 800;
+}
+
+.anon-message__sent h1 {
+  margin: 8px 0 0;
+  color: #ffffff;
+  font-size: 40px;
+  font-weight: 800;
+}
+
+.anon-message__sent p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+@keyframes anon-message-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anon-message__sent {
+    animation: none;
+  }
+}
+
+/* White "get your own messages!" pill under the form / sent state. */
+.anon-message .anon-message__own {
+  margin-top: 6px;
+  background: #ffffff;
+  color: #111111;
+}
+
+.anon-message__sent .anon-message__own {
+  width: 100%;
+}
+
+/* The link's game, as a tiny gradient tag next to the @handle. */
+.anon-message__game {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: linear-gradient(120deg, var(--g1), var(--g2));
+  color: #ffffff;
+  font: 700 10px/16px var(--font-body);
+  vertical-align: 1px;
+}
+
+.anon-message__box {
+  position: relative;
+}
+
+.anon-message__card .anon-message__box textarea {
+  padding-bottom: 64px;
+}
+
+.anon-message__dice {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 50px;
+  height: 50px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  font-size: 26px;
+  cursor: pointer;
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.35);
+}
+
+.anon-message__dice--roll {
+  animation: anon-dice-roll 0.6s var(--ease-bounce);
+}
+
+@keyframes anon-dice-roll {
+  40% {
+    transform: rotate(240deg) scale(1.25);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anon-message__dice--roll {
+    animation: none;
   }
 }

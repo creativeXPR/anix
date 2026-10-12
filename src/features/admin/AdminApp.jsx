@@ -15,6 +15,9 @@ import { db, getFirebaseAuth } from '../../shared/firebase.js'
 import Spinner from '../../shared/components/Spinner.jsx'
 import './AdminApp.css'
 
+// Feedback `kind` from Profile's "talk to us" sheet (older items have none).
+const FEEDBACK_KIND_LABEL = { bug: '🐞 bug', idea: '💡 idea', love: '💜 love' }
+
 // Anyone can land here — the passcode gate doesn't require a real Anix
 // account, so a visitor with no session yet is signed in anonymously
 // purely to get a request.auth.uid the rules can scope the
@@ -200,7 +203,9 @@ function AdminDashboard() {
             {feedback.map((item) => (
               <div key={item.id} className="admin-card">
                 <div className="admin-card__meta">
-                  <span>User {item.userId}</span>
+                  <span>
+                    {FEEDBACK_KIND_LABEL[item.kind] ? `${FEEDBACK_KIND_LABEL[item.kind]} · ` : ''}User {item.userId}
+                  </span>
                   <span>{formatTimestamp(item.createdAt)}</span>
                 </div>
                 <p className="admin-card__text">{item.text}</p>

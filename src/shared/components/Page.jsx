@@ -8,8 +8,10 @@ export default function Page({ title, brand, children }) {
   return (
     <div className="page">
       <header className={`page__header${brand ? ' page__header--fixed' : ''}`}>
-        {brand && <img className="page__logo" src="/icon.jpg" alt="" width={32} height={32} />}
-        <h1 className="page__title">{title}</h1>
+        {brand && <img className="page__logo" src="/icon.svg" alt="" width={36} height={36} />}
+        {/* The brand header shows the sticker wordmark, not a heading —
+            Home's own greeting is its h1. */}
+        {brand ? <span className="sticker-logo">{title}</span> : <h1 className="page__title">{title}</h1>}
       </header>
       <div className={`page__content${brand ? ' page__content--fixed-header' : ''}`}>{children}</div>
     </div>

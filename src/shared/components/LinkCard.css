@@ -1,12 +1,155 @@
+/* --msg-from / --msg-to come from messageGradientVars(item.themeColor). */
 .link-card {
   position: relative;
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 26px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  transition: opacity var(--duration-fast) var(--ease-standard);
 }
 
-.link-card__deleting-overlay {
-  position: absolute;
-  inset: 0;
+.link-card--deleting {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.link-card__band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 58px;
+  padding: 14px 18px;
+  background: linear-gradient(120deg, var(--g1), var(--g2));
+}
+
+.link-card__band .game-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-card__new {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+  font: 700 12px var(--font-body);
+  animation: pop-in 0.3s var(--ease-bounce) both;
+}
+
+.link-card__row,
+.link-card__enter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px 12px;
+}
+
+.link-card__enter {
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.link-card__enter:hover {
+  background: var(--panel-alt);
+}
+
+.link-card__avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--msg-from);
+}
+
+.link-card__enter .link-card__avatar {
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.link-card__avatar--emoji {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 26px;
+  background: linear-gradient(135deg, var(--msg-from), var(--msg-to));
+}
+
+.link-card__id {
+  min-width: 0;
+  flex: 1;
+}
+
+.link-card__id b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-h);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.link-card__id small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.link-card__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.link-card__live i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--secondary-green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--secondary-green) 25%, transparent);
+}
+
+.link-card__status {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--panel-alt);
+  color: var(--text-muted);
+  font: 700 12px var(--font-body);
+}
+
+.link-card__status--open {
+  background: color-mix(in srgb, var(--secondary-green) 16%, transparent);
+  color: var(--secondary-green-alt);
+}
+
+.link-card__chev {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+}
+
+.link-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.link-card__copy {
+  flex: 1;
 }

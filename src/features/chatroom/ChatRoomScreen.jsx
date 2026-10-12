@@ -1,26 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import EmptyState from '../../shared/components/EmptyState.jsx'
+import { useAuthUser } from '../../shared/auth-store.js'
+import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
+import FunEmpty from '../../shared/components/FunEmpty.jsx'
+import ItemSettingsSheet from '../../shared/components/ItemSettingsSheet.jsx'
 import { useAnonymousParticipant } from '../../shared/hooks/use-anonymous-participant.js'
 import BackIcon from '../../shared/icons/BackIcon.jsx'
-import MessageIcon from '../../shared/icons/MessageIcon.jsx'
+import SettingsIcon from '../../shared/icons/SettingsIcon.jsx'
+import { DEFAULT_ROOM_EMOJI } from '../../shared/room-defaults.js'
 import { useToast } from '../../shared/toast-store.js'
+import { messageGradient, messageGradientVars } from '../../shared/utils/message-gradient.js'
 import { getLastVisit, markVisited } from '../../shared/utils/room-visits.js'
-import { themeStyleVars } from '../../shared/utils/theme-vars.js'
 import Composer from './components/Composer.jsx'
 import MessageBubble from './components/MessageBubble.jsx'
 import MessageSkeleton from './components/MessageSkeleton.jsx'
 import TypingIndicator from './components/TypingIndicator.jsx'
 import {
   canSendNow,
+  deleteRoomHandle,
   loadOlderMessages,
   reportMessage,
   sendMessage,
+  setRoomStatus,
   setTyping,
   startPresenceHeartbeat,
   subscribeToLatestMessages,
+  subscribeToPresenceCount,
   subscribeToRoom,
   subscribeToTypingCount,
+  updateRoomSettings,
 } from './messages.js'
 import './ChatRoomScreen.css'
 
@@ -33,6 +41,7 @@ export default function ChatRoomScreen() {
   const navigate = useNavigate()
   const showToast = useToast()
   const participantId = useAnonymousParticipant(roomId)
+  const { user } = useAuthUser()
 
   const [messages, setMessages] = useState([])
   const [initialLoading, setInitialLoading] = useState(true)
@@ -43,6 +52,9 @@ export default function ChatRoomScreen() {
   const [highlightedId, setHighlightedId] = useState(null)
   const [room, setRoom] = useState(null)
   const [pendingMessages, setPendingMessages] = useState([])
+  const [presenceCount, setPresenceCount] = useState(0)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const scrollRef = useRef(null)
   // Captured once, before this visit updates it — used to place the
@@ -101,6 +113,8 @@ export default function ChatRoomScreen() {
   useEffect(() => {
     return startPresenceHeartbeat(roomId, participantId)
   }, [roomId, participantId])
+
+  useEffect(() => subscribeToPresenceCount(roomId, setPresenceCount), [roomId])
 
   useEffect(() => {
     markVisited(roomId)
@@ -164,6 +178,20 @@ export default function ChatRoomScreen() {
   }
 
   const isClosed = room?.status === 'closed'
+  // The owner (signed in, viewing their own room) gets the settings gear —
+  // same sheet as Home's room card.
+  const isOwner = Boolean(user && room?.ownerId === user.uid)
+
+  async function handleDeleteRoom() {
+    setConfirmingDelete(false)
+    try {
+      await deleteRoomHandle(roomId)
+      showToast('Room deleted', 'success')
+      navigate('/')
+    } catch (err) {
+      showToast(err.message, 'error')
+    }
+  }
 
   async function handleSend({ text, imageFile }) {
     if ((!text && !imageFile) || isClosed || !canSendNow()) return
@@ -212,18 +240,41 @@ export default function ChatRoomScreen() {
 
   const visibleMessages = [...messages, ...pendingMessages]
 
+  // The room's theme drives the header band and own bubbles; the page
+  // surfaces stay on the app's light/dark tokens (--primary is overridden
+  // so focus rings etc. follow the room color too).
+  const roomStyle = { ...messageGradientVars(room?.themeColor), '--primary': messageGradient(room?.themeColor).from }
+
   return (
-    <div className="chat-room" style={themeStyleVars(room?.themeColor)}>
+    <div className="chat-room" style={roomStyle}>
       <header className="chat-room__header">
-        <button
-          type="button"
-          className="chat-room__icon-button"
-          onClick={() => navigate('/')}
-          aria-label="Back to home"
-        >
+        <button type="button" className="chat-room__icon-button" onClick={() => navigate('/')} aria-label="Back to home">
           <BackIcon />
         </button>
-        <h1>{room?.handle || 'Chat room'}</h1>
+        {room?.bannerImageUrl ? (
+          <img className="chat-room__badge" src={room.bannerImageUrl} alt="" />
+        ) : (
+          <span className="chat-room__badge chat-room__badge--emoji" aria-hidden="true">
+            {room?.emoji || DEFAULT_ROOM_EMOJI}
+          </span>
+        )}
+        <div className="chat-room__title">
+          <h1>{room?.handle || 'chat room'}</h1>
+          <small>
+            {presenceCount > 0 ? `${presenceCount} ${presenceCount === 1 ? 'person' : 'people'} here` : 'just you'} ·
+            anonymous
+          </small>
+        </div>
+        {isOwner && (
+          <button
+            type="button"
+            className="chat-room__icon-button chat-room__settings"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Room settings"
+          >
+            <SettingsIcon />
+          </button>
+        )}
       </header>
 
       <div className="chat-room__messages" ref={scrollRef} onScroll={handleScroll}>
@@ -234,12 +285,14 @@ export default function ChatRoomScreen() {
             <MessageSkeleton align="left" width={120} />
           </>
         ) : visibleMessages.length === 0 ? (
-          <EmptyState icon={MessageIcon} title="No messages yet" />
+          <FunEmpty emoji="👋" title="say hi!" text="nobody's said anything yet — be the first. you're anonymous here." />
         ) : (
           visibleMessages.map((message, index) => (
             <div key={message.id}>
               {firstUnreadMessage?.id === message.id && (
-                <div className="chat-room__unread-divider">New messages</div>
+                <div className="chat-room__unread-divider">
+                  <span>new messages</span>
+                </div>
               )}
               <MessageBubble
                 message={message}
@@ -258,9 +311,7 @@ export default function ChatRoomScreen() {
         <TypingIndicator count={typingCount} />
       </div>
 
-      {isClosed && (
-        <div className="chat-room__closed-banner text-b3">This room is closed by its host.</div>
-      )}
+      {isClosed && <div className="chat-room__closed-banner">🔒 this room is closed by its host</div>}
 
       <Composer
         replyTo={replyTo}
@@ -269,6 +320,26 @@ export default function ChatRoomScreen() {
         onTypingChange={handleTypingChange}
         disabled={isClosed}
       />
+
+      {settingsOpen && room && (
+        <ItemSettingsSheet
+          item={{ ...room, id: roomId }}
+          kind="room"
+          onUpdateSettings={(updates) => updateRoomSettings(roomId, updates)}
+          onToggleStatus={() => setRoomStatus(roomId, isClosed ? 'open' : 'closed')}
+          onDelete={() => setConfirmingDelete(true)}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="delete this room?"
+          message={`"${room?.handle}" and every message in it will be permanently deleted. This can't be undone.`}
+          confirmLabel="Delete room"
+          onConfirm={handleDeleteRoom}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   )
 }

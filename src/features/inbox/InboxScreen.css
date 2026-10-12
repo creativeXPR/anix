@@ -1,0 +1,107 @@
+.inbox-sub {
+  min-height: 1.4em;
+  margin: -6px 0 0;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.inbox-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.inbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 600px) {
+  .inbox-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  }
+}
+
+/* Scattered-sticker tilt that straightens on hover/press (#004-E). */
+.inbox-card {
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 0.3s var(--ease-bounce);
+}
+
+.inbox-card:hover {
+  transform: rotate(0deg) scale(1.03);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inbox-card,
+  .inbox-card:hover {
+    transform: none;
+  }
+}
+
+/* Unread message: a sealed gradient "envelope" tile (NGL). */
+.inbox-sealed {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 1 / 1.05;
+  overflow: hidden;
+  padding: 14px;
+  border: none;
+  border-radius: 26px;
+  background: linear-gradient(140deg, var(--g1), var(--g2));
+  box-shadow: 0 14px 28px -14px var(--g1);
+  color: #ffffff;
+  text-align: center;
+  cursor: pointer;
+}
+
+.inbox-sealed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 15%, rgba(255, 255, 255, 0.25), transparent 55%);
+  pointer-events: none;
+}
+
+.inbox-sealed__env {
+  font-size: 46px;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.2));
+  animation: inbox-bob 2.2s ease-in-out infinite;
+}
+
+.inbox-sealed b {
+  font: 800 20px/1.05 var(--font-display);
+}
+
+.inbox-sealed small {
+  opacity: 0.85;
+  font: 600 12px var(--font-body);
+}
+
+.inbox-answered {
+  color: var(--secondary-green-alt);
+  font-weight: 700;
+}
+
+@keyframes inbox-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inbox-sealed__env {
+    animation: none;
+  }
+}
