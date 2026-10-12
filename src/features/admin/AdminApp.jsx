@@ -1,23 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-} from 'firebase/firestore'
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db, getFirebaseAuth } from '../../shared/firebase.js'
 import Spinner from '../../shared/components/Spinner.jsx'
+import { ContactList, FeedbackList } from './InboxLists.jsx'
 import ModerationQueue from './ModerationQueue.jsx'
 import ReportsList from './ReportsList.jsx'
+import VisitorsChart from './VisitorsChart.jsx'
 import './AdminApp.css'
-
-// Feedback `kind` from Profile's "talk to us" sheet (older items have none).
-const FEEDBACK_KIND_LABEL = { bug: '🐞 bug', idea: '💡 idea', love: '💜 love' }
 
 // Anyone can land here — the passcode gate doesn't require a real Anix
 // account, so a visitor with no session yet is signed in anonymously
@@ -117,103 +107,94 @@ function AdminGate({ uid, onUnlocked }) {
   )
 }
 
-function formatTimestamp(timestamp) {
-  if (!timestamp?.toDate) return ''
-  return timestamp.toDate().toLocaleString()
+// Tabbed dashboard (2026-10-12). Every panel stays mounted (just hidden)
+// so its live listener keeps the tab's count badge current; the tab lives
+// in the URL hash (/admin#reports) so a refresh keeps your place.
+const TABS = [
+  { key: 'overview', label: 'Overview', icon: '📈' },
+  { key: 'moderation', label: 'Moderation', icon: '🛡️', urgent: true },
+  { key: 'reports', label: 'Reports', icon: '🚩', urgent: true },
+  { key: 'feedback', label: 'Feedback', icon: '💬' },
+  { key: 'contact', label: 'Contact', icon: '✉️' },
+]
+
+function initialTab() {
+  const hash = window.location.hash.slice(1)
+  return TABS.some((t) => t.key === hash) ? hash : 'overview'
 }
 
 function AdminDashboard() {
-  const [feedback, setFeedback] = useState(null)
-  const [contact, setContact] = useState(null)
+  const [tab, setTab] = useState(initialTab)
+  const [counts, setCounts] = useState({})
+  const setCount = useMemo(
+    () =>
+      Object.fromEntries(
+        TABS.map((t) => [t.key, (n) => setCounts((c) => (c[t.key] === n ? c : { ...c, [t.key]: n }))]),
+      ),
+    [],
+  )
 
-  useEffect(() => {
-    const q = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'))
-    const unsub = onSnapshot(
-      q,
-      (snap) => setFeedback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      (err) => {
-        console.error('feedback listen failed', err)
-        setFeedback([])
-      },
-    )
-    return unsub
-  }, [])
+  function open(key) {
+    setTab(key)
+    window.history.replaceState(null, '', `#${key}`)
+    window.scrollTo({ top: 0 })
+  }
 
-  useEffect(() => {
-    const q = query(collection(db, 'contact'), orderBy('createdAt', 'desc'))
-    const unsub = onSnapshot(
-      q,
-      (snap) => setContact(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      (err) => {
-        console.error('contact listen failed', err)
-        setContact([])
-      },
-    )
-    return unsub
-  }, [])
+  const current = TABS.find((t) => t.key === tab)
 
   return (
     <div className="admin-shell admin-dashboard">
-      <ModerationQueue />
+      <header className="admin-topbar">
+        <div className="admin-brand">
+          <img src="/icon.svg" alt="" />
+          <div>
+            <b>anix admin</b>
+            <small>{current.label}</small>
+          </div>
+        </div>
+        <nav className="admin-tabs" role="tablist" aria-label="Admin sections">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.key}
+              onClick={() => open(t.key)}
+            >
+              <span aria-hidden="true">{t.icon}</span>
+              {t.label}
+              {counts[t.key] > 0 && (
+                <span className={`admin-badge${t.urgent ? ' admin-badge--urgent' : ''}`}>{counts[t.key]}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </header>
 
-      <ReportsList />
-
-      <section>
-        <header className="admin-header">
-          <h1>Feedback</h1>
-          <div className="admin-count">{feedback === null ? '…' : `${feedback.length} total`}</div>
-        </header>
-        {feedback === null ? (
-          <div className="admin-loading">
-            <Spinner size={32} />
-          </div>
-        ) : feedback.length === 0 ? (
-          <div className="admin-empty">No feedback yet.</div>
-        ) : (
-          <div className="admin-list">
-            {feedback.map((item) => (
-              <div key={item.id} className="admin-card">
-                <div className="admin-card__meta">
-                  <span>
-                    {FEEDBACK_KIND_LABEL[item.kind] ? `${FEEDBACK_KIND_LABEL[item.kind]} · ` : ''}User {item.userId}
-                  </span>
-                  <span>{formatTimestamp(item.createdAt)}</span>
-                </div>
-                <p className="admin-card__text">{item.text}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <header className="admin-header">
-          <h1>Contact</h1>
-          <div className="admin-count">{contact === null ? '…' : `${contact.length} total`}</div>
-        </header>
-        {contact === null ? (
-          <div className="admin-loading">
-            <Spinner size={32} />
-          </div>
-        ) : contact.length === 0 ? (
-          <div className="admin-empty">No contact messages yet.</div>
-        ) : (
-          <div className="admin-list">
-            {contact.map((item) => (
-              <div key={item.id} className="admin-card">
-                <div className="admin-card__meta">
-                  <span>
-                    {item.topic}
-                    {item.email ? ` · ${item.email}` : ' · no reply email'}
-                  </span>
-                  <span>{formatTimestamp(item.createdAt)}</span>
-                </div>
-                <p className="admin-card__text">{item.message}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <div role="tabpanel" hidden={tab !== 'overview'} className="admin-panel">
+        <div className="admin-tiles">
+          {TABS.slice(1).map((t) => (
+            <button key={t.key} type="button" className={`admin-tile${t.urgent && counts[t.key] > 0 ? ' admin-tile--urgent' : ''}`} onClick={() => open(t.key)}>
+              <span aria-hidden="true">{t.icon}</span>
+              <b>{counts[t.key] ?? '…'}</b>
+              <small>{t.urgent ? `${t.label.toLowerCase()} to review` : t.label.toLowerCase()}</small>
+            </button>
+          ))}
+        </div>
+        <VisitorsChart />
+      </div>
+      <div role="tabpanel" hidden={tab !== 'moderation'} className="admin-panel">
+        <ModerationQueue onCount={setCount.moderation} />
+      </div>
+      <div role="tabpanel" hidden={tab !== 'reports'} className="admin-panel">
+        <ReportsList onCount={setCount.reports} />
+      </div>
+      <div role="tabpanel" hidden={tab !== 'feedback'} className="admin-panel">
+        <FeedbackList onCount={setCount.feedback} />
+      </div>
+      <div role="tabpanel" hidden={tab !== 'contact'} className="admin-panel">
+        <ContactList onCount={setCount.contact} />
+      </div>
     </div>
   )
 }

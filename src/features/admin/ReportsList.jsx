@@ -4,6 +4,8 @@ import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import Spinner from '../../shared/components/Spinner.jsx'
 import { db } from '../../shared/firebase.js'
 import { resolveSender } from './sender-source.js'
+import { ListBar, NoMatches, ShowMore } from './ListBar.jsx'
+import { useListTools } from './list-tools.js'
 import { ResolvedSender } from './SenderPattern.jsx'
 
 // Every report (rooms, links, private chats) with what you need to act:
@@ -15,7 +17,14 @@ function formatTimestamp(timestamp) {
   return timestamp?.toDate ? timestamp.toDate().toLocaleString() : ''
 }
 
-export default function ReportsList() {
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'room', label: 'Rooms' },
+  { key: 'link', label: 'Links' },
+  { key: 'thread', label: 'Private chats' },
+]
+
+export default function ReportsList({ onCount }) {
   const [reports, setReports] = useState(null)
   const [confirm, setConfirm] = useState(null) // { action, item }
   const [notice, setNotice] = useState('')
@@ -40,6 +49,15 @@ export default function ReportsList() {
       },
     )
   }, [])
+
+  const tools = useListTools(reports, {
+    match: (item, key) => item.where === key,
+    text: (item) => `${item.text || ''} ${item.reason || ''} ${item.parentId || ''}`,
+  })
+  const total = reports?.length
+  useEffect(() => {
+    if (total !== undefined) onCount?.(total)
+  }, [total, onCount])
 
   async function run() {
     const { action, item } = confirm
@@ -72,21 +90,18 @@ export default function ReportsList() {
 
   return (
     <section>
-      <header className="admin-header">
-        <h1>Reports</h1>
-        <div className="admin-count">{reports === null ? '…' : `${reports.length} total`}</div>
-      </header>
+      <ListBar tools={tools} filters={FILTERS} placeholder="Search text, reason or id…" />
       {notice && <p className="admin-notice">{notice}</p>}
       {reports === null ? (
         <div className="admin-loading">
           <Spinner size={32} />
         </div>
-      ) : reports.length === 0 ? (
-        <div className="admin-empty">No reports yet.</div>
+      ) : tools.filtered.length === 0 ? (
+        <NoMatches tools={tools}>No reports yet. 🎉</NoMatches>
       ) : (
         <div className="admin-list">
-          {reports.map((item) => (
-            <div key={`${item.where}-${item.parentId}-${item.id}`} className="admin-card">
+          {tools.visible.map((item) => (
+            <div key={`${item.where}-${item.parentId}-${item.id}`} className="admin-card admin-card--urgent">
               <div className="admin-card__meta">
                 <span>
                   {label(item)}
@@ -117,6 +132,7 @@ export default function ReportsList() {
               </div>
             </div>
           ))}
+          <ShowMore tools={tools} />
         </div>
       )}
       {confirm && (

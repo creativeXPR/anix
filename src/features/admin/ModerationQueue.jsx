@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import Spinner from '../../shared/components/Spinner.jsx'
 import { db } from '../../shared/firebase.js'
+import { ListBar, NoMatches, ShowMore } from './ListBar.jsx'
+import { useListTools } from './list-tools.js'
 import { ResolvedSender } from './SenderPattern.jsx'
 
 // Moderation queue (2026-10-12): messages the automated filter hid
@@ -39,7 +41,15 @@ function formatTimestamp(timestamp) {
   return timestamp?.toDate ? timestamp.toDate().toLocaleString() : ''
 }
 
-export default function ModerationQueue() {
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'filtered', label: '🛡️ Filtered' },
+  { key: 'unchecked', label: '⚠️ Unchecked' },
+  { key: 'link', label: 'Links' },
+  { key: 'thread', label: 'Private chats' },
+]
+
+export default function ModerationQueue({ onCount }) {
   const filtered = useQueue('filtered', true)
   const unchecked = useQueue('moderation.unchecked', true)
   const [confirm, setConfirm] = useState(null) // { action: 'delete' | 'block', item }
@@ -51,6 +61,15 @@ export default function ModerationQueue() {
         (a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0),
       )
       : null
+  const tools = useListTools(items, {
+    match: (item, key) =>
+      key === 'filtered' ? item.filtered : key === 'unchecked' ? !item.filtered : item.where === key,
+    text: (item) => `${item.text || ''} ${item.parentId || ''} ${(item.moderation?.categories || []).join(' ')}`,
+  })
+  const total = items?.length
+  useEffect(() => {
+    if (total !== undefined) onCount?.(total)
+  }, [total, onCount])
 
   async function run() {
     const { action, item } = confirm
@@ -80,21 +99,18 @@ export default function ModerationQueue() {
 
   return (
     <section>
-      <header className="admin-header">
-        <h1>Moderation</h1>
-        <div className="admin-count">{items === null ? '…' : `${items.length} to review`}</div>
-      </header>
+      <ListBar tools={tools} filters={FILTERS} placeholder="Search text, link or category…" />
       {notice && <p className="admin-notice">{notice}</p>}
       {items === null ? (
         <div className="admin-loading">
           <Spinner size={32} />
         </div>
-      ) : items.length === 0 ? (
-        <div className="admin-empty">Nothing filtered or unchecked.</div>
+      ) : tools.filtered.length === 0 ? (
+        <NoMatches tools={tools}>Nothing filtered or unchecked. 🎉</NoMatches>
       ) : (
         <div className="admin-list">
-          {items.map((item) => (
-            <div key={item.ref.path} className="admin-card">
+          {tools.visible.map((item) => (
+            <div key={item.ref.path} className={`admin-card ${item.filtered ? 'admin-card--urgent' : 'admin-card--warn'}`}>
               <div className="admin-card__meta">
                 <span>
                   {item.filtered ? '🛡️ filtered' : '⚠️ unchecked'} · {item.where === 'thread' ? `private chat (${item.from})` : `link ${item.parentId}`}
@@ -122,6 +138,7 @@ export default function ModerationQueue() {
               </div>
             </div>
           ))}
+          <ShowMore tools={tools} />
         </div>
       )}
       {confirm && (

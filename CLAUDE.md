@@ -1306,3 +1306,22 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   `receipts` (senders can't read users/). ✓✓ shows only when
   `thread.receipts` is true — for both sides, WhatsApp-style; otherwise
   just ✓. Rooms only ever show ✓.
+
+## Admin: tabs, filters, visitors chart (2026-10-12)
+- **/admin is tabbed** (Overview · Moderation · Reports · Feedback ·
+  Contact) with count badges (red for to-review). All panels stay
+  mounted (hidden) so their live listeners keep badges current; the tab is
+  in the URL hash (`/admin#feedback`). Overview = tiles + visitors chart.
+- **Every list** uses `useListTools` (list-tools.js) + `ListBar`/`ShowMore`
+  (ListBar.jsx): filter chips with counts, text search, 20-at-a-time
+  "show more". Feedback filters by kind (bug/idea/love/untagged), Contact
+  by topic, Moderation by filtered/unchecked/links/private chats, Reports
+  by room/link/private chat. Cards carry a coloured left stripe by kind.
+- **Unique visitors** (shared/visits.js, called once in main.jsx, skipped
+  on /admin): random per-browser id in localStorage, at most one
+  `visits/{YYYY-MM-DD}_{id}` doc per UTC day (rules: create-only, shape +
+  id pattern checked, admin-only read). VisitorsChart.jsx counts per day
+  with `getCountFromServer` (7/30/90d), draws an SVG line vs the previous
+  period (dashed) and says increasing / decreasing / steady (±5%) by
+  comparing period totals. Disclosed in Privacy → "visitor counts".
+  Counting started 2026-10-12, so the trend needs one full period first.

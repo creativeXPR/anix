@@ -30,6 +30,19 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/adminUnlocks/$(request.auth.uid));
     }
 
+    // Unique-visitor counting (shared/visits.js): one create-only doc per
+    // browser per UTC day, id `{day}_{random visitor id}`; only /admin
+    // reads (counts) them.
+    match /visits/{visitId} {
+      allow create: if request.resource.data.keys().hasOnly(['day', 'createdAt'])
+        && request.resource.data.day is string
+        && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && visitId.matches('^' + request.resource.data.day + '_[0-9a-f]{24}$')
+        && request.resource.data.createdAt == request.time;
+      allow read: if isUnlockedAdmin();
+      allow update, delete: if false;
+    }
+
     match /admin/gate {
       allow read, write: if false;
     }

@@ -286,6 +286,11 @@ export function PrivacyPage() {
         we use them only to keep the service secure, to investigate serious abuse, and to respond to valid legal
         requests.
       </p>
+      <h2>visitor counts</h2>
+      <p>
+        To know how many people use Anix, your browser keeps a random ID that isn&apos;t linked to your account, name or
+        IP address, and records one &quot;visited today&quot; mark per day. We only ever look at the totals.
+      </p>
       <h2>how long we keep it</h2>
       <ul>
         <li>Rooms and everything in them are deleted after two days without new messages.</li>
