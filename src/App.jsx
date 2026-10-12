@@ -7,6 +7,8 @@ import HomeScreen from './features/home/HomeScreen.jsx'
 import InboxScreen from './features/inbox/InboxScreen.jsx'
 import ProfileScreen from './features/profile/ProfileScreen.jsx'
 import ThreadScreen from './features/threads/ThreadScreen.jsx'
+import WelcomeHome from './features/welcome/WelcomeHome.jsx'
+import { AboutPage, ContactPage, GuidelinesPage, PrivacyPage, SafetyPage, TermsPage } from './features/welcome/WelcomePages.jsx'
 import AppShell from './shared/components/AppShell.jsx'
 import InstallCard from './shared/components/InstallCard.jsx'
 import RequireAuth from './shared/components/RequireAuth.jsx'
@@ -32,6 +34,15 @@ function App() {
     <>
       <Routes>
         <Route path="/auth" element={<AuthScreen />} />
+        {/* Public site (no account needed). Only reached by linking to it
+            directly — the root still sends signed-out visitors to /auth. */}
+        <Route path="/welcome" element={<WelcomeHome />} />
+        <Route path="/welcome/about" element={<AboutPage />} />
+        <Route path="/welcome/safety" element={<SafetyPage />} />
+        <Route path="/welcome/contact" element={<ContactPage />} />
+        <Route path="/welcome/terms" element={<TermsPage />} />
+        <Route path="/welcome/privacy" element={<PrivacyPage />} />
+        <Route path="/welcome/guidelines" element={<GuidelinesPage />} />
         {/* :handle is a cosmetic trailing segment for readability (e.g.
             /r/uu23g/movie-night) — never read by the app, only :roomId/
             :userId (the actual code) is. Optional so the bare code alone

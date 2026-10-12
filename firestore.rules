@@ -50,6 +50,13 @@ service cloud.firestore {
       allow list, get: if isUnlockedAdmin();
     }
 
+    // Moderation queue (2026-10-12): the admin dashboard lists filtered /
+    // unchecked messages across every link and private conversation with
+    // one collection-group query, and can delete them.
+    match /{path=**}/messages/{messageId} {
+      allow list, get, delete: if isUnlockedAdmin();
+    }
+
     match /rooms/{roomId} {
       allow get: if true;
       allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
@@ -97,6 +104,9 @@ service cloud.firestore {
       allow create: if false;
       // Owner edits settings (photo, vibe, and since the NGL redesign the
       // prompt game: `game` + resolved `prompt` text, capped at 80 chars).
+      // The admin dashboard may only extend the block list ("Block sender").
+      allow update: if isUnlockedAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blocked']);
       allow update: if request.auth != null && resource.data.ownerId == request.auth.uid
         && (!('prompt' in request.resource.data)
           || request.resource.data.prompt == null
@@ -106,10 +116,10 @@ service cloud.firestore {
       // Anonymous senders write with no auth at all (that's the
       // feature); only the endpoint's owner can ever read messages back.
       match /messages/{messageId} {
-        // Open to anyone (no auth) — except a browser the owner blocked
-        // (phase 2: its per-link senderKey is in the endpoint's `blocked`).
-        allow create: if !(request.resource.data.get('senderKey', '')
-          in get(/databases/$(database)/documents/messageEndpoints/$(endpointId)).data.get('blocked', []));
+        // Created only by the sendAnonymousMessage Cloud Function (Admin
+        // SDK), which moderates the text first and enforces blocks — never
+        // directly by clients (2026-10-12).
+        allow create: if false;
         allow read: if isEndpointOwner();
         // NGL redesign (2026-10-12): the owner opens sealed messages
         // (`read`) and answers them (`answer`/`answeredAt`) — those three
@@ -126,6 +136,17 @@ service cloud.firestore {
         // The owner can delete a message they received (behind a confirm).
         allow delete: if isEndpointOwner();
       }
+
+      // The link owner reports a received message (Report in the inbox).
+      match /reports/{reportId} {
+        allow create: if isEndpointOwner()
+          && request.resource.data.keys().hasOnly(['kind', 'messageId', 'text', 'reason', 'createdAt'])
+          && request.resource.data.kind == 'message'
+          && request.resource.data.reason in ['harassment', 'hate', 'threat', 'sexual', 'self-harm', 'spam', 'other']
+          && request.resource.data.text is string && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time;
+        allow read, update, delete: if false;
+      }
     }
 
     // ---- Anonymous two-way reply (phase 2, 2026-10-12) ----
@@ -135,16 +156,6 @@ service cloud.firestore {
     // lets the sender read/post (no sender account exists). Only the link
     // owner can create the thread, and only at the id on that message.
     match /threads/{threadId} {
-      function thread() {
-        return get(/databases/$(database)/documents/threads/$(threadId)).data;
-      }
-      function isThreadOwner() {
-        return request.auth != null && thread().ownerId == request.auth.uid;
-      }
-      function senderBlocked() {
-        return thread().senderKey != null && thread().senderKey
-          in get(/databases/$(database)/documents/messageEndpoints/$(thread().endpointId)).data.get('blocked', []);
-      }
 
       allow get: if true;
       allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
@@ -153,31 +164,32 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/messageEndpoints/$(request.resource.data.endpointId)).data.ownerId == request.auth.uid
         && get(/databases/$(database)/documents/messageEndpoints/$(request.resource.data.endpointId)/messages/$(request.resource.data.messageId)).data.threadId == threadId
         && request.resource.data.status == 'open';
-      // Owner: status (end) + bookkeeping. Sender (anyone with the id):
-      // bookkeeping only, while open; marking their side seen always works.
+      // Messages + their bookkeeping are written by the sendThreadMessage
+      // Cloud Function (moderated). Clients only: the owner ends the thread
+      // or marks their side seen; the sender marks their side seen.
       allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'ownerUnread', 'senderUnread', 'lastFrom', 'lastActivityAt'])
+            .hasOnly(['status', 'ownerUnread', 'lastActivityAt'])
           && request.resource.data.status in ['open', 'ended'])
-        || (resource.data.status == 'open'
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['ownerUnread', 'senderUnread', 'lastFrom', 'lastActivityAt'])
-          && request.resource.data.lastFrom in [resource.data.lastFrom, 'sender'])
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['senderUnread'])
           && request.resource.data.senderUnread == false);
       allow delete: if false;
 
       match /messages/{messageId} {
         allow read: if true;
-        allow create: if thread().status == 'open'
-          && request.resource.data.keys().hasOnly(['from', 'text', 'createdAt'])
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 1000
-          && request.resource.data.createdAt == request.time
-          && ((request.resource.data.from == 'owner' && isThreadOwner())
-            || (request.resource.data.from == 'sender' && !senderBlocked()));
-        allow update, delete: if false;
+        // Only via the sendThreadMessage Cloud Function (moderated).
+        allow create, update, delete: if false;
+      }
+
+      // Either side reports the conversation / a message in it.
+      match /reports/{reportId} {
+        allow create: if request.resource.data.keys().hasOnly(['kind', 'messageId', 'text', 'reason', 'by', 'createdAt'])
+          && request.resource.data.kind == 'thread'
+          && request.resource.data.by in ['owner', 'sender']
+          && request.resource.data.reason in ['harassment', 'hate', 'threat', 'sexual', 'self-harm', 'spam', 'other']
+          && request.resource.data.text is string && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time;
+        allow read, update, delete: if false;
       }
     }
 
@@ -196,6 +208,21 @@ service cloud.firestore {
     // one to), so pushes only ever reach a room/endpoint's *owner*.
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // /welcome/contact form — anyone can send (no account needed), shape
+    // validated; only the admin dashboard can read it.
+    match /contact/{contactId} {
+      allow create: if request.resource.data.keys().hasOnly(['topic', 'email', 'message', 'createdAt'])
+        && request.resource.data.topic in ['question', 'idea', 'bug', 'safety report', 'business', 'other']
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 4000
+        && (request.resource.data.email == null
+          || (request.resource.data.email is string && request.resource.data.email.size() <= 200))
+        && request.resource.data.createdAt == request.time;
+      allow list, get: if isUnlockedAdmin();
+      allow update, delete: if false;
     }
 
     // Create-only from any signed-in user; read via the admin dashboard

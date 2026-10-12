@@ -59,7 +59,12 @@ export default function InboxScreen() {
     return all.sort((a, b) => time(b) - time(a))
   }, [inboxes, endpointById])
 
-  const visible = filter === 'all' ? messages : messages.filter((message) => message.endpointId === filter)
+  // Moderation-filtered messages never show in the main feed — they wait
+  // in the "filtered" folder, where the owner can choose to look.
+  const filteredOut = messages.filter((message) => message.filtered)
+  const clean = messages.filter((message) => !message.filtered)
+  const visible =
+    filter === 'filtered' ? filteredOut : filter === 'all' ? clean : clean.filter((message) => message.endpointId === filter)
   // Threads whose link still exists, newest activity first.
   const liveThreads = threads
     .filter((thread) => endpointById[thread.endpointId])
@@ -83,7 +88,7 @@ export default function InboxScreen() {
     <Page title="inbox">
       <p className="inbox-sub">{subtitle}</p>
 
-      {endpoints !== null && (endpoints.length > 1 || liveThreads.length > 0) && (
+      {endpoints !== null && (endpoints.length > 1 || liveThreads.length > 0 || filteredOut.length > 0) && (
         <div className="inbox-filters" role="tablist" aria-label="Filter by link">
           <button
             type="button"
@@ -116,6 +121,18 @@ export default function InboxScreen() {
             >
               💬 convos
               {unreadReplies > 0 && <span className="inbox-chip-dot" aria-label={`${unreadReplies} new`} />}
+            </button>
+          )}
+          {filteredOut.length > 0 && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'filtered'}
+              className="chip"
+              onClick={() => setFilter('filtered')}
+              title="Messages our filter hid because they may be offensive"
+            >
+              🛡️ filtered {filteredOut.length}
             </button>
           )}
         </div>
@@ -160,7 +177,14 @@ export default function InboxScreen() {
           }}
         />
       ) : (
-        <div className="inbox-grid">
+        <>
+        {filter === 'filtered' && (
+          <div className="filter-note">
+            <span aria-hidden="true">🛡️</span>
+            <span>Our filter hid these because they may be offensive. They never show in your inbox and you weren&apos;t notified. Tap one only if you want to see it.</span>
+          </div>
+        )}
+        <div className={`inbox-grid${filter === 'filtered' ? ' inbox-grid--filtered' : ''}`}>
           {visible.map((message, index) => {
             const endpoint = endpointById[message.endpointId]
             const style = { '--tilt': tiltFor(message.id), animationDelay: `${Math.min(index, 8) * 40}ms` }
@@ -206,6 +230,7 @@ export default function InboxScreen() {
             )
           })}
         </div>
+        </>
       )}
 
       {openMessage && (

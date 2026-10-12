@@ -4,7 +4,7 @@ import {
   signInWithPopup,
 } from 'firebase/auth'
 import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Button from '../../shared/components/Button.jsx'
 import { getFirebaseAuth, googleProvider } from '../../shared/firebase.js'
 import { useToast } from '../../shared/toast-store.js'
@@ -23,6 +23,8 @@ export default function AuthScreen() {
   const [mode, setMode] = useState('sign-up')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // Sign-up only: confirms 13+ and agreement to the Terms / Guidelines.
+  const [agreed, setAgreed] = useState(false)
   // Which action is in flight, if any — tracked separately (not one
   // shared `submitting` bool) so the spinner lands on the button the
   // user actually clicked, not both.
@@ -108,7 +110,21 @@ export default function AuthScreen() {
             required
             minLength={6}
           />
-          <Button type="submit" block loading={pendingAction === 'email'} disabled={pendingAction === 'google'}>
+          {!signIn && (
+            <label className="auth-screen__agree">
+              <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} required />
+              <span>
+                I&apos;m 13 or older and agree to the <Link to="/welcome/terms">Terms</Link>,{' '}
+                <Link to="/welcome/guidelines">Community Guidelines</Link> and <Link to="/welcome/privacy">Privacy Policy</Link>.
+              </span>
+            </label>
+          )}
+          <Button
+            type="submit"
+            block
+            loading={pendingAction === 'email'}
+            disabled={pendingAction === 'google' || (!signIn && !agreed)}
+          >
             {signIn ? 'Sign in' : 'Sign up'}
           </Button>
         </form>
@@ -123,6 +139,13 @@ export default function AuthScreen() {
           >
             Continue with Google
           </Button>
+        )}
+        {signIn && (
+          <p className="auth-screen__fine">
+            New to Anix? Continuing with Google means you&apos;re 13 or older and agree to the{' '}
+            <Link to="/welcome/terms">Terms</Link>, <Link to="/welcome/guidelines">Community Guidelines</Link> and{' '}
+            <Link to="/welcome/privacy">Privacy Policy</Link>.
+          </p>
         )}
 
         <button

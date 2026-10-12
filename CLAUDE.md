@@ -1192,3 +1192,69 @@ the corners itself.
   default plays. sw.js adds `vibrate` (Android), a per-destination `tag`
   with `renotify: true` so each new message re-alerts. Untested on a real
   device so far.
+
+## Public site at /welcome (2026-10-12)
+
+NGL-style landing + "major" pages, ported from the approved prototype
+`test/anix-welcome.html` (decisions: discussed playbook-style; see the
+anix-landing-page memory). `src/features/welcome/`:
+
+- Routes (outside the auth gate, no account needed): `/welcome`,
+  `/welcome/about`, `/welcome/safety`, `/welcome/contact`,
+  `/welcome/terms`, `/welcome/privacy`. Only reached by linking to it —
+  the root still sends signed-out visitors to /auth. Blog joins the nav
+  only once there are posts. **No social media links**, by request.
+- Landing: prompt ticker, hero ("say it. anonymously.", Get started →
+  /auth, Install app only when the browser can install), floating 3D
+  emoji + mockups of real Anix UI, scattered game cards (from games.js),
+  how it works, "more than a link" spotlights, safety block, "join the
+  fun" with a QR (npm `qrcode`) to anix.web.app. Always the gradient
+  look; inner pages use the app's light/dark tokens.
+- `use-cursor-physics.js`: floating `.wl-phys` items follow the cursor on
+  a damped spring (parallax + near-cursor pull) and can be dragged with
+  rubber-band resistance, springing back; uses the CSS `translate`
+  property so it stacks with the bob/rotate animations; off for
+  reduced motion.
+- Contact form → `contact/{id}` {topic, email|null, message ≤4000,
+  createdAt}; anyone can create (rule-validated), only /admin reads it
+  (new "Contact" section). No public email address for now.
+- Terms and Privacy (reviewed + approved by the user 2026-10-12) are written from how Anix actually works
+  (incl. the random browser codes for private replies/blocking, 2-day
+  room expiry, Firebase as processor, 13+).
+- Classes are `wl-` namespaced (the app already has .pill/.chip/.card).
+
+## Automated moderation + safety basics (2026-10-12)
+
+User asked for NGL-style pre-inbox filtering (NGL uses Hive) to reduce
+legal risk. Chosen engine: **Google Cloud Natural Language
+`moderateText`** (same c-xpr25 project/billing; Google is already the
+named processor). Needs `language.googleapis.com` enabled on c-xpr25.
+
+- **Sends go through Cloud Functions now**: `sendAnonymousMessage`
+  (no auth; validates, snapshots the link's game/prompt, enforces
+  `blocked`) and `sendThreadMessage` (decides owner vs sender server-side,
+  enforces blocks, updates unread bookkeeping). firestore.rules: direct
+  client creates of endpoint messages and thread messages are now
+  **denied**. Old cached clients can't send until they refresh.
+- `moderate()` thresholds (`FLAG_AT`): Toxic/Insult/Sexual/Violent 0.7,
+  Derogatory 0.6, Death-Harm-Tragedy 0.8, Firearms/Illicit Drugs 0.85.
+  Stored on the message: `filtered`, `moderation {categories, scores}`.
+  If the API fails, the message is delivered with
+  `moderation.unchecked` (fail-open) for admin review.
+- Filtered = never a sealed tile/unread/push; inbox **🛡️ filtered**
+  folder (blurred, warning, owner may open); in private chats a "hidden by
+  our filter — show" placeholder for the reader. The sender is never told.
+- **Report**: received-message sheet → `messageEndpoints/{id}/reports`
+  (owner only); private chats (either side, ⋯ menu) →
+  `threads/{id}/reports`; reasons list in inbox.js `REPORT_REASONS`.
+  /admin Reports shows kind/reason/text.
+- **/admin Moderation queue** (ModerationQueue.jsx): collection-group
+  query on `messages` where `filtered`/`moderation.unchecked`; Delete and
+  Block sender (adds the senderKey to the link's `blocked`; admin rule
+  only allows touching `blocked`). Two composite indexes in
+  firestore.indexes.json (collection group `messages`).
+- Sign-up requires "13 or older + agree to Terms, Community Guidelines,
+  Privacy" (Google sign-in shows the same notice). New
+  `/welcome/guidelines` page, linked from footer, Safety, Terms, sender
+  page. Terms/Privacy/Safety describe the automated checks.
+- Deploy order: enable the API → functions → hosting → rules + indexes.

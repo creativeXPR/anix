@@ -13,7 +13,8 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore'
-import { db } from '../../shared/firebase.js'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '../../shared/firebase.js'
 
 // Anonymous two-way reply (phase 2, 2026-10-12).
 //
@@ -145,17 +146,23 @@ export async function openThread({ endpoint, message, ownerId }) {
   return message.threadId
 }
 
-export async function sendThreadMessage(threadId, from, text) {
-  await addDoc(collection(db, 'threads', threadId, 'messages'), {
-    from, // 'owner' | 'sender'
-    text: text.trim(),
+// Through the sendThreadMessage Cloud Function: it moderates the text,
+// works out which side you are (signed-in owner vs. id holder), enforces
+// blocks and updates the unread bookkeeping (2026-10-12).
+export async function sendThreadMessage(threadId, text) {
+  const call = httpsCallable(functions, 'sendThreadMessage')
+  await call({ threadId, text: text.trim() })
+}
+
+// Either side reports the conversation (or one message in it) → /admin.
+export async function reportThread(threadId, { messageId = null, text = '', reason, by }) {
+  await addDoc(collection(db, 'threads', threadId, 'reports'), {
+    kind: 'thread',
+    messageId,
+    text: String(text || '').slice(0, 1000),
+    reason,
+    by,
     createdAt: serverTimestamp(),
-  })
-  await updateDoc(threadRef(threadId), {
-    lastFrom: from,
-    lastActivityAt: serverTimestamp(),
-    ownerUnread: from === 'sender',
-    senderUnread: from === 'owner',
   })
 }
 

@@ -142,3 +142,15 @@
 .thread__original .message-card {
   animation: none;
 }
+
+/* A message moderation hid from this reader (tap to show). */
+.thread__hidden {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.thread__hidden b {
+  color: var(--text-h);
+  font-style: normal;
+}

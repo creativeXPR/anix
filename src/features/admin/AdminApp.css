@@ -148,3 +148,48 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Moderation queue (ModerationQueue.jsx) */
+.admin-notice {
+  margin: 0 0 10px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.admin-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.admin-card__tags span {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.admin-card__actions button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-alt);
+  color: var(--text-h);
+  font: 600 13px var(--font-body);
+  cursor: pointer;
+}
+
+.admin-card__actions button.danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #ffffff;
+}

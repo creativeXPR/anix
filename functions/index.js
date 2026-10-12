@@ -7,6 +7,7 @@ const { initializeApp } = require('firebase-admin/app')
 const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 const { getStorage } = require('firebase-admin/storage')
 const { getMessaging } = require('firebase-admin/messaging')
+const { v2: language } = require('@google-cloud/language')
 
 const app = initializeApp()
 // Same named database as the client (src/shared/firebase.js) — see CLAUDE.md #008.
@@ -172,6 +173,121 @@ exports.deleteMessageEndpoint = onCall(async (request) => {
   return { ok: true }
 })
 
+// --- Automated moderation (2026-10-12) ---
+//
+// Anonymous messages and private replies are sent through these callables
+// (firestore.rules blocks direct client writes) so Google Cloud Natural
+// Language's moderateText can check them BEFORE they reach an inbox, the
+// way NGL screens messages. Flagged messages are stored with
+// `filtered: true`: hidden from the inbox (the owner can still choose to
+// look in the "filtered" folder), never pushed, listed in /admin. The
+// sender is never told — they just see "sent".
+//
+// If the moderation service fails, the message is delivered and marked
+// `moderation.unchecked` for admin review rather than breaking sending.
+const FLAG_AT = {
+  Toxic: 0.7,
+  Insult: 0.7,
+  Derogatory: 0.6,
+  Sexual: 0.7,
+  Violent: 0.7,
+  'Death, Harm & Tragedy': 0.8,
+  'Firearms & Weapons': 0.85,
+  'Illicit Drugs': 0.85,
+}
+let languageClient = null
+
+async function moderate(text) {
+  try {
+    languageClient = languageClient || new language.LanguageServiceClient()
+    const [result] = await languageClient.moderateText({ document: { content: text, type: 'PLAIN_TEXT' } })
+    const scores = {}
+    for (const c of result.moderationCategories || []) scores[c.name] = Math.round((c.confidence || 0) * 1000) / 1000
+    const categories = Object.entries(FLAG_AT)
+      .filter(([name, threshold]) => (scores[name] || 0) >= threshold)
+      .map(([name]) => name)
+    const top = Object.fromEntries(Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 5))
+    return { filtered: categories.length > 0, moderation: { categories, scores: top } }
+  } catch (err) {
+    console.error('moderateText failed', err)
+    return { filtered: false, moderation: { unchecked: true } }
+  }
+}
+
+const TEXT_MAX = 1000
+const CODE_RE = /^[a-z0-9]{6}$/
+const SECRET_RE = /^[A-Za-z0-9]{16,40}$/
+
+function cleanText(text) {
+  const t = String(text || '').trim()
+  if (!t) throw new HttpsError('invalid-argument', 'Write something first.')
+  if (t.length > TEXT_MAX) throw new HttpsError('invalid-argument', `Messages can be at most ${TEXT_MAX} characters.`)
+  return t
+}
+
+// Anonymous message to a link. No account needed (that's the feature).
+exports.sendAnonymousMessage = onCall(async (request) => {
+  const { endpointId, text, threadId, senderKey } = request.data || {}
+  if (!CODE_RE.test(String(endpointId || ''))) throw new HttpsError('invalid-argument', 'Unknown link.')
+  if (!SECRET_RE.test(String(threadId || '')) || !SECRET_RE.test(String(senderKey || ''))) {
+    throw new HttpsError('invalid-argument', 'Please refresh the page and try again.')
+  }
+  const body = cleanText(text)
+  const endpointRef = db.doc(`messageEndpoints/${endpointId}`)
+  const endpoint = (await endpointRef.get()).data()
+  if (!endpoint) throw new HttpsError('not-found', "This link doesn't exist or was deleted.")
+  if ((endpoint.blocked || []).includes(senderKey)) {
+    throw new HttpsError('permission-denied', "You can't send messages to this link.")
+  }
+
+  const { filtered, moderation } = await moderate(body)
+  const ref = await endpointRef.collection('messages').add({
+    text: body,
+    game: endpoint.game || null,
+    prompt: endpoint.prompt || null,
+    read: false,
+    threadId,
+    senderKey,
+    filtered,
+    moderation,
+    createdAt: FieldValue.serverTimestamp(),
+  })
+  return { id: ref.id }
+})
+
+// A message in a private two-way conversation. The side is decided here
+// (signed-in thread owner = 'owner', anyone else holding the id = 'sender'),
+// not trusted from the client.
+exports.sendThreadMessage = onCall(async (request) => {
+  const { threadId, text } = request.data || {}
+  if (!SECRET_RE.test(String(threadId || ''))) throw new HttpsError('invalid-argument', 'Unknown conversation.')
+  const body = cleanText(text)
+  const threadRef = db.doc(`threads/${threadId}`)
+  const thread = (await threadRef.get()).data()
+  if (!thread) throw new HttpsError('not-found', 'This conversation no longer exists.')
+  if (thread.status !== 'open') throw new HttpsError('failed-precondition', 'This conversation has ended.')
+  const from = request.auth?.uid === thread.ownerId ? 'owner' : 'sender'
+  if (from === 'sender' && thread.senderKey) {
+    const endpoint = (await db.doc(`messageEndpoints/${thread.endpointId}`).get()).data()
+    if ((endpoint?.blocked || []).includes(thread.senderKey)) {
+      throw new HttpsError('permission-denied', "You can't send messages to this link.")
+    }
+  }
+
+  const { filtered, moderation } = await moderate(body)
+  const batch = db.batch()
+  const messageRef = threadRef.collection('messages').doc()
+  batch.set(messageRef, { from, text: body, filtered, moderation, createdAt: FieldValue.serverTimestamp() })
+  batch.update(threadRef, {
+    lastFrom: from,
+    lastActivityAt: FieldValue.serverTimestamp(),
+    // a filtered message doesn't light up the other side's "new reply"
+    ...(filtered ? {} : from === 'sender' ? { ownerUnread: true } : { senderUnread: true }),
+  })
+  await batch.commit()
+  return { id: messageRef.id, from }
+})
+
 // --- Push notifications (#006, 2026-09-21) ---
 //
 // Only a room/endpoint's *owner* can ever receive a push — they're the
@@ -197,6 +313,7 @@ async function sendToOwner(ownerId, notification, link = '/') {
 exports.onEndpointMessage = onAnixDocCreated(
   'messageEndpoints/{endpointId}/messages/{messageId}',
   async (event) => {
+    if (event.data?.data()?.filtered) return // moderation hid it — don't announce it
     const endpoint = (await db.doc(`messageEndpoints/${event.params.endpointId}`).get()).data()
     if (!endpoint?.ownerId) return
     // Messages snapshot the prompt they answered (NGL redesign games).
@@ -235,7 +352,7 @@ exports.onThreadMessage = onAnixDocCreated('threads/{threadId}/messages/{message
   const message = event.data?.data()
   const threadId = event.params.threadId
   const thread = (await db.doc(`threads/${threadId}`).get()).data()
-  if (!message || !thread) return
+  if (!message || !thread || message.filtered) return
 
   if (message.from === 'sender') {
     await sendToOwner(

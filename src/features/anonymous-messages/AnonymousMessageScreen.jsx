@@ -66,9 +66,9 @@ export default function AnonymousMessageScreen() {
       setSent(threadId)
       setText('')
     } catch (err) {
-      setError(
-        err?.code === 'permission-denied' ? "You can't send messages to this link." : err.message,
-      )
+      // The send function's messages are written for people ("You can't
+      // send messages to this link." etc.).
+      setError(String(err?.message || 'Could not send — try again.'))
     } finally {
       setSending(false)
     }
@@ -152,7 +152,10 @@ export default function AnonymousMessageScreen() {
               </div>
             </div>
 
-            <p className="anon-message__note">🔒 anonymous q&amp;a</p>
+            <p className="anon-message__note">
+              🔒 anonymous q&amp;a · by sending you agree to our{' '}
+              <Link to="/welcome/guidelines">community guidelines</Link>
+            </p>
 
             {error && <p className="anon-message__error">{error}</p>}
             <Button type="submit" className="anon-message__send" loading={sending} disabled={!text.trim()}>

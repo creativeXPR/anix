@@ -46,29 +46,45 @@ function endpointMessagesRef(endpointId) {
   return collection(db, 'messageEndpoints', endpointId, 'messages')
 }
 
-// Anonymous senders never need to be signed in — matches the "receive
-// anonymous messages" feature (see firestore.rules: create is open,
-// read is owner-only). `game`/`prompt` snapshot what the sender was
-// answering (see shared/games.js); `read: false` makes it a sealed tile
-// in the owner's inbox. Messages from before this have no `read` field
-// and count as already read. `threadId`/`senderKey` come from the
-// sender's browser (features/threads/threads.js): the capability for a
-// later private conversation, and the key a block applies to.
-export async function sendAnonymousMessage(endpointId, text, { game = null, prompt = null, threadId, senderKey }) {
-  const ref = await addDoc(endpointMessagesRef(endpointId), {
-    text: text.trim(),
-    game,
-    prompt,
-    read: false,
-    threadId,
-    senderKey,
-    createdAt: serverTimestamp(),
-  })
-  return ref.id
+// Anonymous senders never need to be signed in. Sending goes through the
+// sendAnonymousMessage Cloud Function (2026-10-12), which runs automated
+// moderation BEFORE the message reaches the inbox, snapshots the link's
+// game/prompt and enforces blocks — clients can't write messages directly.
+// `threadId`/`senderKey` come from the sender's browser
+// (features/threads/threads.js): the capability for a later private
+// conversation, and the key a block applies to.
+export async function sendAnonymousMessage(endpointId, text, { threadId, senderKey }) {
+  const call = httpsCallable(functions, 'sendAnonymousMessage')
+  const result = await call({ endpointId, text: text.trim(), threadId, senderKey })
+  return result.data.id
 }
 
+// Sealed = never opened. Messages from before sealed tiles have no `read`
+// field (count as read); moderation-filtered ones live in the "filtered"
+// folder instead and never count as new.
 export function isUnread(message) {
-  return message.read === false
+  return message.read === false && !message.filtered
+}
+
+export const REPORT_REASONS = [
+  { value: 'harassment', label: 'bullying or harassment' },
+  { value: 'hate', label: 'hate' },
+  { value: 'threat', label: 'threats or violence' },
+  { value: 'sexual', label: 'sexual content' },
+  { value: 'self-harm', label: 'self-harm' },
+  { value: 'spam', label: 'spam' },
+  { value: 'other', label: 'something else' },
+]
+
+// The link owner reports a received message → /admin (Reports).
+export async function reportReceivedMessage(endpointId, message, reason) {
+  await addDoc(collection(db, 'messageEndpoints', endpointId, 'reports'), {
+    kind: 'message',
+    messageId: message.id,
+    text: String(message.text || '').slice(0, 1000),
+    reason,
+    createdAt: serverTimestamp(),
+  })
 }
 
 // Owner-only updates — firestore.rules limits them to exactly these

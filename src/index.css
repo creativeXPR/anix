@@ -447,3 +447,61 @@ textarea.field {
   background: linear-gradient(135deg, var(--msg-from, var(--grad-from)), var(--msg-to, var(--grad-to)));
   transform: scale(1.08);
 }
+
+/* Report sheet (shared/components/ReportSheet.jsx). */
+.report-sub {
+  margin: -6px 0 0;
+  color: var(--text-muted);
+}
+
+.report-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-reason {
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text-h);
+  font: 600 14px var(--font-body);
+  cursor: pointer;
+}
+
+.report-reason[aria-checked='true'] {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.report-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.report-done span {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.report-done p {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+}
+
+/* "Our filter hid this" notice (moderation, 2026-10-12). */
+.filter-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+  color: var(--text-h);
+  font-size: 14px;
+}

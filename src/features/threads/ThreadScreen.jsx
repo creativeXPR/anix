@@ -5,6 +5,7 @@ import { usePopOnNew } from '../../shared/hooks/use-pop-on-new.js'
 import Button from '../../shared/components/Button.jsx'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import MessageCard from '../../shared/components/MessageCard.jsx'
+import ReportSheet from '../../shared/components/ReportSheet.jsx'
 import Sheet from '../../shared/components/Sheet.jsx'
 import ArrowRightIcon from '../../shared/icons/ArrowRightIcon.jsx'
 import BackIcon from '../../shared/icons/BackIcon.jsx'
@@ -18,10 +19,12 @@ import {
   endThread,
   getRememberedThread,
   markThreadSeen,
+  reportThread,
   sendThreadMessage,
   subscribeToThread,
   subscribeToThreadMessages,
 } from './threads.js'
+import { REPORT_REASONS } from '../inbox/inbox.js'
 import NotifyMeButton from './NotifyMeButton.jsx'
 import './ThreadScreen.css'
 
@@ -39,6 +42,8 @@ export default function ThreadScreen() {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [reporting, setReporting] = useState(false)
+  const [revealed, setRevealed] = useState(() => new Set()) // filtered messages the reader chose to see
   const [confirming, setConfirming] = useState(null) // 'end' | 'block' | null
   const scrollRef = useRef(null)
   const remembered = getRememberedThread(threadId)
@@ -73,10 +78,10 @@ export default function ThreadScreen() {
     const draft = text
     setText('')
     try {
-      await sendThreadMessage(threadId, side, draft)
-    } catch {
+      await sendThreadMessage(threadId, draft)
+    } catch (err) {
       setText(draft)
-      showToast("Couldn't send — this conversation may have ended", 'error')
+      showToast(String(err?.message || "Couldn't send — this conversation may have ended"), 'error')
     } finally {
       setSending(false)
     }
@@ -121,7 +126,7 @@ export default function ThreadScreen() {
           </h1>
           <small>{side === 'owner' ? `private chat on @${thread?.handle}` : "private chat · you're anonymous"}</small>
         </div>
-        {side === 'owner' && thread && !ended && (
+        {thread && (
           <button type="button" className="thread__icon-btn" onClick={() => setMenuOpen(true)} aria-label="Conversation options">
             ⋯
           </button>
@@ -162,9 +167,20 @@ export default function ThreadScreen() {
                   style={showGap ? { marginTop: 14 } : undefined}
                 >
                   <div className="bubble-wrap">
-                    <div className={`bubble ${mine ? 'bubble--own' : 'bubble--other'}`}>
-                      <p className="bubble__text">{message.text}</p>
-                    </div>
+                    {/* moderation hid it: the reader decides whether to look */}
+                    {message.filtered && !mine && !revealed.has(message.id) ? (
+                      <button
+                        type="button"
+                        className="bubble bubble--other thread__hidden"
+                        onClick={() => setRevealed((current) => new Set(current).add(message.id))}
+                      >
+                        🛡️ hidden by our filter — may be offensive · <b>show</b>
+                      </button>
+                    ) : (
+                      <div className={`bubble ${mine ? 'bubble--own' : 'bubble--other'}`}>
+                        <p className="bubble__text">{message.text}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -209,16 +225,36 @@ export default function ThreadScreen() {
       {menuOpen && (
         <Sheet onClose={() => setMenuOpen(false)}>
           <h2>conversation</h2>
-          <Button variant="secondary" block onClick={() => setConfirming('end')}>
-            End conversation
+          {side === 'owner' && !ended && (
+            <>
+              <Button variant="secondary" block onClick={() => setConfirming('end')}>
+                End conversation
+              </Button>
+              <Button variant="danger" block onClick={() => setConfirming('block')}>
+                Block this sender
+              </Button>
+            </>
+          )}
+          <Button variant="secondary" block onClick={() => { setMenuOpen(false); setReporting(true) }}>
+            🚩 Report this conversation
           </Button>
-          <Button variant="danger" block onClick={() => setConfirming('block')}>
-            Block this sender
-          </Button>
-          <p className="thread__note">
-            Blocking stops this browser from sending anything else to @{thread?.handle}. You still won't know who it was.
-          </p>
+          {side === 'owner' && (
+            <p className="thread__note">
+              Blocking stops this browser from sending anything else to @{thread?.handle}. You still won't know who it was.
+            </p>
+          )}
         </Sheet>
+      )}
+      {reporting && (
+        <ReportSheet
+          title="report this conversation"
+          reasons={REPORT_REASONS}
+          onReport={(reason) => {
+            const theirs = [...(messages || [])].reverse().find((m) => m.from !== side)
+            return reportThread(threadId, { messageId: theirs?.id || null, text: theirs?.text || '', reason, by: side })
+          }}
+          onClose={() => setReporting(false)}
+        />
       )}
       {confirming && (
         <ConfirmDialog

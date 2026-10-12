@@ -40,3 +40,9 @@
   border-radius: 50%;
   background: var(--secondary-green);
 }
+
+.message-sheet__minor {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}

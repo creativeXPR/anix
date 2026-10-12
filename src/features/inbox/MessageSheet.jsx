@@ -4,6 +4,7 @@ import { useAuthUser } from '../../shared/auth-store.js'
 import Button from '../../shared/components/Button.jsx'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import MessageCard from '../../shared/components/MessageCard.jsx'
+import ReportSheet from '../../shared/components/ReportSheet.jsx'
 import Sheet from '../../shared/components/Sheet.jsx'
 import { gameOf, headerOf } from '../../shared/games.js'
 import ShareIcon from '../../shared/icons/ShareIcon.jsx'
@@ -11,7 +12,7 @@ import TrashIcon from '../../shared/icons/TrashIcon.jsx'
 import { useToast } from '../../shared/toast-store.js'
 import { generateMessageImageBlob } from '../../shared/utils/message-image.js'
 import { openThread } from '../threads/threads.js'
-import { deleteReceivedMessage, isUnread, markMessageRead, saveAnswer } from './inbox.js'
+import { deleteReceivedMessage, isUnread, markMessageRead, REPORT_REASONS, reportReceivedMessage, saveAnswer } from './inbox.js'
 import './MessageSheet.css'
 
 const ANSWER_MAX = 500
@@ -31,6 +32,7 @@ export default function MessageSheet({ message, endpoint, thread, onClose }) {
   const [previewUrl, setPreviewUrl] = useState(null)
   const [busy, setBusy] = useState(null) // 'preview' | 'share' | 'reply' | null
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [reporting, setReporting] = useState(false)
   const previewRef = useRef(null)
 
   useEffect(() => {
@@ -99,6 +101,12 @@ export default function MessageSheet({ message, endpoint, thread, onClose }) {
 
   return (
     <Sheet onClose={onClose}>
+      {message.filtered && (
+        <div className="filter-note">
+          <span aria-hidden="true">🛡️</span>
+          <span>Our filter hid this message because it may be offensive. You don&apos;t have to read it — you can delete or report it.</span>
+        </div>
+      )}
       <MessageCard
         message={message}
         className={`message-sheet__card${wasSealed ? ' message-sheet__card--reveal' : ''}`}
@@ -135,10 +143,24 @@ export default function MessageSheet({ message, endpoint, thread, onClose }) {
         </Button>
       )}
 
-      <Button variant="secondary" size="sm" onClick={() => setConfirmingDelete(true)} style={{ alignSelf: 'center' }}>
-        <TrashIcon />
-        Delete message
-      </Button>
+      <div className="message-sheet__minor">
+        <Button variant="secondary" size="sm" onClick={() => setReporting(true)}>
+          🚩 Report
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setConfirmingDelete(true)}>
+          <TrashIcon />
+          Delete message
+        </Button>
+      </div>
+
+      {reporting && (
+        <ReportSheet
+          title="report this message"
+          reasons={REPORT_REASONS}
+          onReport={(reason) => reportReceivedMessage(endpoint.id, message, reason)}
+          onClose={() => setReporting(false)}
+        />
+      )}
 
       {confirmingDelete && (
         <ConfirmDialog

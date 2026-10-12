@@ -184,3 +184,9 @@
   color: #ffffff;
   font: 700 12px var(--font-body);
 }
+
+/* "filtered" folder: cards are blurred until opened. */
+.inbox-grid--filtered .message-card__text {
+  filter: blur(6px);
+  user-select: none;
+}
