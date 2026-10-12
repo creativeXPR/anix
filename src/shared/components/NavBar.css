@@ -61,8 +61,8 @@
   color: #ffffff;
 }
 
-.nav-bar__item:active {
-  transform: scale(0.9);
+.nav-bar__item {
+  --press: 0.9;
 }
 
 .nav-bar__item--active {

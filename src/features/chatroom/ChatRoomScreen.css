@@ -71,8 +71,8 @@
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.chat-room__icon-button:active {
-  transform: scale(0.9);
+.chat-room__icon-button {
+  --press: 0.9;
 }
 
 .chat-room__icon-button svg {

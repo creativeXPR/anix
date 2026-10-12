@@ -1,0 +1,86 @@
+/* App-wide "bouncy" interaction feel (2026-10-12) — the welcome page's
+   springiness, applied to every interactive widget the same way:
+     press   → quick squish to --press (per widget; default 0.95)
+     release → "boing" overshoot (motion.js adds .m-boing on pointerup / key
+               activation)
+     focus   → text fields pop softly
+     hover   → small controls lean toward the cursor (motion.js, inline
+               `translate`), springing back on leave
+   Uses the standalone `scale` / `translate` properties so it stacks with
+   any `transform` a widget already uses, and animations (not transitions)
+   so a widget's own `transition` list can't cancel it. A widget opts out
+   with [data-no-bounce]. */
+
+:where(
+    button,
+    a[href],
+    summary,
+    select,
+    label[for],
+    input[type='checkbox'],
+    input[type='radio'],
+    [role='button'],
+    [role='tab'],
+    [role='switch'],
+    [role='radio'],
+    [role='option'],
+    [role='menuitem']
+  ):not(:disabled, [aria-disabled='true'], [data-no-bounce]):active {
+  animation: m-press 0.12s ease-out forwards;
+}
+
+.m-boing {
+  animation: m-boing 0.5s var(--ease-standard) both;
+}
+
+:where(input:not([type='checkbox'], [type='radio'], [type='range']), textarea):not([data-no-bounce]):focus-visible {
+  animation: m-focus 0.42s both;
+}
+
+@keyframes m-press {
+  to {
+    scale: var(--press, 0.95);
+  }
+}
+
+/* damped spring: under → over → settle */
+@keyframes m-boing {
+  0% {
+    scale: var(--press, 0.95);
+  }
+  35% {
+    scale: calc(1 + (1 - var(--press, 0.95)) * 0.9);
+  }
+  60% {
+    scale: calc(1 - (1 - var(--press, 0.95)) * 0.35);
+  }
+  80% {
+    scale: calc(1 + (1 - var(--press, 0.95)) * 0.12);
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+@keyframes m-focus {
+  0% {
+    scale: 1;
+  }
+  40% {
+    scale: 1.015;
+  }
+  70% {
+    scale: 0.997;
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(*):active,
+  .m-boing,
+  :where(input, textarea):focus-visible {
+    animation: none !important;
+  }
+}

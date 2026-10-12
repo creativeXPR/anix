@@ -19,8 +19,8 @@
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.game-picker__option:active:not(:disabled) {
-  transform: scale(0.96);
+.game-picker__option {
+  --press: 0.96;
 }
 
 .game-picker__option[aria-checked='true'] {

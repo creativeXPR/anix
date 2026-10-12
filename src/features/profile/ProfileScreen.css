@@ -129,8 +129,8 @@
   line-height: 1;
 }
 
-.feedback-kind:active {
-  transform: scale(0.94);
+.feedback-kind {
+  --press: 0.94;
 }
 
 .feedback-kind[aria-checked='true'] {

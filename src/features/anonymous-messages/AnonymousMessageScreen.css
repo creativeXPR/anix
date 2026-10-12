@@ -303,8 +303,8 @@
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.my-convos__row:active {
-  transform: scale(0.98);
+.my-convos__row {
+  --press: 0.98;
 }
 
 .my-convos__text {

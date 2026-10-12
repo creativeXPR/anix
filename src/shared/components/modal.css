@@ -17,8 +17,8 @@
   transition: transform var(--duration-fast) var(--ease-bounce);
 }
 
-.modal__swatch:active:not(:disabled) {
-  transform: scale(0.9);
+.modal__swatch {
+  --press: 0.9;
 }
 
 .modal__swatch--selected {

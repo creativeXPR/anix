@@ -7,6 +7,8 @@ import { InstallProvider } from './shared/install-context.jsx'
 import { ThemeProvider } from './shared/theme-context.jsx'
 import { ToastProvider } from './shared/toast.jsx'
 import './index.css'
+import './shared/motion.css'
+import { initMotion } from './shared/motion.js'
 import { logVisit } from './shared/visits.js'
 
 if ('serviceWorker' in navigator) {
@@ -16,6 +18,7 @@ if ('serviceWorker' in navigator) {
 }
 
 logVisit()
+initMotion()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

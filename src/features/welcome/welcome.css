@@ -140,8 +140,8 @@
   transition: transform var(--duration-fast) var(--ease-standard), filter var(--duration-fast) var(--ease-standard);
 }
 
-.wl-pill:active:not(:disabled) {
-  transform: scale(0.95);
+.wl-pill {
+  --press: 0.95;
 }
 
 .wl-pill:hover:not(:disabled) {

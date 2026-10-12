@@ -137,8 +137,8 @@
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.inbox-convo:active {
-  transform: scale(0.98);
+.inbox-convo {
+  --press: 0.98;
 }
 
 .inbox-convo__ghost {

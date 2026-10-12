@@ -1325,3 +1325,18 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   period (dashed) and says increasing / decreasing / steady (±5%) by
   comparing period totals. Disclosed in Privacy → "visitor counts".
   Counting started 2026-10-12, so the trend needs one full period first.
+
+## App-wide bouncy interactions (2026-10-12)
+- One motion system for every widget (shared/motion.css + motion.js,
+  `initMotion()` in main.jsx) instead of per-component `:active` rules:
+  press = squish to `--press` (set per widget, default 0.95; e.g. `.btn`
+  0.95, `.icon-btn` 0.9, list rows 0.98), release = `m-boing` spring
+  overshoot (also on keyboard activation), text fields pop on focus, and
+  on desktop small controls (≤220×72) lean ≤4px toward the cursor with a
+  damped spring — the welcome page's cursor-physics feel.
+- Uses the standalone `scale`/`translate` properties + animations, so it
+  stacks with any `transform`/`transition` a widget already has. New
+  widgets get it automatically if they're a button/link/role=button etc.;
+  set `--press` for depth, `data-no-bounce` / `data-no-lean` to opt out.
+  Off under prefers-reduced-motion. Welcome floaters (`.wl-phys`) excluded
+  from lean (they have their own physics).

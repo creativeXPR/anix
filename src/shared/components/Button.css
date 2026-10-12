@@ -20,8 +20,8 @@
     background-color var(--duration-fast) var(--ease-standard);
 }
 
-.btn:active:not(:disabled) {
-  transform: scale(0.95);
+.btn {
+  --press: 0.95;
 }
 
 .btn:hover:not(:disabled) {

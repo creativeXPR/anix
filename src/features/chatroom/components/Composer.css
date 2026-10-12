@@ -112,8 +112,8 @@
   transition: transform var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
 }
 
-.composer__send:active:not(:disabled) {
-  transform: scale(0.88);
+.composer__send {
+  --press: 0.88;
 }
 
 .composer__send:disabled {

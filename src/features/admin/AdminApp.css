@@ -165,8 +165,8 @@
     transform var(--duration-bounce) var(--ease-bounce);
 }
 
-.admin-tabs button:active {
-  transform: scale(0.96);
+.admin-tabs button {
+  --press: 0.96;
 }
 
 .admin-tabs button[aria-selected='true'] {

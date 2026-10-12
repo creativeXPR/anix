@@ -64,8 +64,8 @@
   color: var(--primary-light);
 }
 
-.home-new-tile:active {
-  transform: scale(0.97);
+.home-new-tile {
+  --press: 0.97;
 }
 
 .home-new-tile__plus {

@@ -279,8 +279,8 @@ textarea.field {
   background: var(--border);
 }
 
-.icon-btn:active:not(:disabled) {
-  transform: scale(0.9);
+.icon-btn {
+  --press: 0.9;
 }
 
 .icon-btn:disabled {
@@ -392,8 +392,8 @@ textarea.field {
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.chip:active {
-  transform: scale(0.95);
+.chip {
+  --press: 0.95;
 }
 
 .chip[aria-selected='true'] {
@@ -439,8 +439,8 @@ textarea.field {
   transition: transform var(--duration-fast) var(--ease-bounce);
 }
 
-.emoji-picker__option:active:not(:disabled) {
-  transform: scale(0.88);
+.emoji-picker__option {
+  --press: 0.88;
 }
 
 .emoji-picker__option[aria-checked='true'] {
