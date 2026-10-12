@@ -12,6 +12,7 @@ import ThemeToggle from '../../shared/components/ThemeToggle.jsx'
 import { getFirebaseAuth } from '../../shared/firebase.js'
 import { useInstall } from '../../shared/install-store.js'
 import { useToast } from '../../shared/toast-store.js'
+import { APP_VERSION } from '../../shared/version.js'
 import { subscribeToOwnedRooms } from '../chatroom/messages.js'
 import { subscribeToInbox, subscribeToOwnedEndpoints } from '../inbox/inbox.js'
 import { submitFeedback } from './feedback.js'
@@ -87,7 +88,7 @@ export default function ProfileScreen() {
         Sign out
       </Button>
 
-      <p className="profile-footer">powered by IARdays x creativeXPR</p>
+      <p className="profile-footer">anix {APP_VERSION} · powered by IARdays x creativeXPR</p>
 
       {feedbackOpen && <FeedbackSheet userId={user.uid} onClose={() => setFeedbackOpen(false)} />}
       {confirmingSignOut && (

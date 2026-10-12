@@ -13,9 +13,38 @@
     "site": "anix",
     "public": "dist",
     "rewrites": [
-      { "source": "/r/**", "function": "linkPreview" },
-      { "source": "/m/**", "function": "linkPreview" },
-      { "source": "**", "destination": "/index.html" }
+      {
+        "source": "/r/**",
+        "function": "linkPreview"
+      },
+      {
+        "source": "/m/**",
+        "function": "linkPreview"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/boot.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
     ]
   },
   "functions": {

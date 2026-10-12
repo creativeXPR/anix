@@ -454,7 +454,11 @@ exports.expireInactiveRooms = onSchedule('every 24 hours', async () => {
 // The landscape banner (public/banner.png), not the raw square icon —
 // a link-preview surface expects a ~1200x630 image; the square icon
 // either gets cropped oddly or shown tiny depending on the platform.
-const DEFAULT_BANNER = 'https://anix.web.app/banner.png'
+// `?v=` busts WhatsApp/Facebook's long image cache when the design changes.
+const DEFAULT_BANNER = 'https://anix.web.app/banner.png?v=1.1'
+// The template loads the app through fixed-name /boot.js + /boot.css
+// (see vite.config.js stableBootEntry), so it stays valid across
+// hosting-only deploys — it never names a content-hashed bundle.
 const INDEX_TEMPLATE = fs.readFileSync(path.join(__dirname, 'index-template.html'), 'utf8')
 const CRAWLER_PATTERN =
   /bot|facebookexternalhit|whatsapp|telegrambot|slackbot|discordbot|linkedinbot|pinterest|redditbot|applebot|vkshare|w3c_validator|embedly|quora link preview|outbrain|skypeuripreview/i
@@ -463,8 +467,23 @@ function escapeHtml(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-function injectMeta(html, { title, description, image }) {
-  return html
+// `square`: a link's own photo (an avatar, not a 1200x630 banner) —
+// drop the banner dimensions and use the small-card layout so platforms
+// show it as a neat thumbnail instead of stretching/cropping it.
+function injectMeta(html, { title, description, image, url, square }) {
+  let out = html
+  if (square) {
+    out = out
+      .replace(/\s*<meta property="og:image:(width|height|type|alt)" content=".*?" \/>/g, '')
+      .replace('<meta name="twitter:card" content="summary_large_image" />', '<meta name="twitter:card" content="summary" />')
+  }
+  return out
+    .replace(/<meta property="og:url" content=".*?" \/>/, `<meta property="og:url" content="${escapeHtml(url)}" />`)
+    .replace(/<meta name="twitter:title" content=".*?" \/>/, `<meta name="twitter:title" content="${escapeHtml(title)}" />`)
+    .replace(
+      /<meta name="twitter:description" content=".*?" \/>/,
+      `<meta name="twitter:description" content="${escapeHtml(description)}" />`,
+    )
     .replace(/<title>.*?<\/title>/, `<title>${escapeHtml(title)}</title>`)
     .replace(
       /<meta name="description" content=".*?" \/>/,
@@ -478,8 +497,8 @@ function injectMeta(html, { title, description, image }) {
       /<meta property="og:description" content=".*?" \/>/,
       `<meta property="og:description" content="${escapeHtml(description)}" />`,
     )
-    .replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${image}" />`)
-    .replace(/<meta name="twitter:image" content=".*?" \/>/, `<meta name="twitter:image" content="${image}" />`)
+    .replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${escapeHtml(image)}" />`)
+    .replace(/<meta name="twitter:image" content=".*?" \/>/, `<meta name="twitter:image" content="${escapeHtml(image)}" />`)
 }
 
 exports.linkPreview = onRequest(async (req, res) => {
@@ -510,6 +529,8 @@ exports.linkPreview = onRequest(async (req, res) => {
     const data = snapshot.exists ? snapshot.data() : null
     const handle = data?.handle || id
     const image = data?.bannerImageUrl || DEFAULT_BANNER
+    const square = Boolean(data?.bannerImageUrl)
+    const url = `https://anix.web.app${req.path}`
     const title = kind === 'r' ? `Join ${handle} on Anix` : `Send ${handle} an anonymous message`
     // Links store their resolved prompt text since the NGL redesign's
     // games (e.g. "describe me in 3 words") — show it in the preview.
@@ -521,7 +542,7 @@ exports.linkPreview = onRequest(async (req, res) => {
           : 'Send an anonymous message on Anix.'
 
     res.set('Cache-Control', 'public, max-age=300')
-    res.status(200).send(injectMeta(INDEX_TEMPLATE, { title, description, image }))
+    res.status(200).send(injectMeta(INDEX_TEMPLATE, { title, description, image, url, square }))
   } catch (err) {
     console.error('linkPreview error', err)
     res.status(200).send(INDEX_TEMPLATE)

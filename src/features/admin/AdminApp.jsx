@@ -3,6 +3,7 @@ import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db, getFirebaseAuth } from '../../shared/firebase.js'
 import Spinner from '../../shared/components/Spinner.jsx'
+import { APP_VERSION } from '../../shared/version.js'
 import { ContactList, FeedbackList } from './InboxLists.jsx'
 import ModerationQueue from './ModerationQueue.jsx'
 import ReportsList from './ReportsList.jsx'
@@ -148,7 +149,9 @@ function AdminDashboard() {
         <div className="admin-brand">
           <img src="/icon.svg" alt="" />
           <div>
-            <b>anix admin</b>
+            <b>
+              anix admin <span className="admin-version">{APP_VERSION}</span>
+            </b>
             <small>{current.label}</small>
           </div>
         </div>

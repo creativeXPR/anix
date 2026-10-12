@@ -1340,3 +1340,27 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   set `--press` for depth, `data-no-bounce` / `data-no-lean` to opt out.
   Off under prefers-reduced-motion. Welcome floaters (`.wl-phys`) excluded
   from lean (they have their own physics).
+
+## v1.1: link pages can't go stale, new share banner (2026-10-12)
+- **Bug**: /m/** and /r/** (linkPreview function) served a bundled copy of
+  index.html naming the content-hashed JS; hosting-only deploys deleted
+  that file → every shared link blank ("Expected a JavaScript module…
+  text/html"). **Fix**: vite.config.js `stableBootEntry` writes
+  dist/boot.js + dist/boot.css (fixed names, `no-cache` in firebase.json)
+  that import the current hashed bundle, and generates
+  functions/index-template.html loading those instead. Hosting and
+  functions can now deploy independently. Redeploy `functions:linkPreview`
+  only when index.html's <head>/meta change. **Always smoke-test a /m/
+  link after any deploy.**
+- **Share banner** (public/banner.png, 1200×630): redrawn in the current
+  brand — glossy icon, light purple/pink gradient, "say it. anonymously.".
+  og/twitter image URLs are absolute + `?v=1.1` (WhatsApp/Facebook ignore
+  relative og:image and cache images by URL — bump `v` on redesign).
+  Added og:url / site_name / image alt+type. A link with its own photo
+  gets the small square "summary" card without banner dimensions.
+  Descriptions no longer mention "seasonal theming".
+- **Version**: package.json 1.1.0 → `import.meta.env.VITE_APP_VERSION`
+  (vite `define`), shown as "v1.1" in the Profile footer and the /admin
+  header (shared/version.js).
+- Service worker: removed the no-op fetch handler (Chrome warning; not
+  needed for installability anymore).

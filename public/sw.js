@@ -1,9 +1,7 @@
-// Minimal service worker — exists mainly to satisfy PWA installability
-// criteria (a registered fetch handler), not for offline caching. No
-// caching strategy is attempted here: Anix is realtime/Firestore-driven,
-// and blanket caching could easily serve stale data. Revisit if genuine
-// offline support is ever wanted.
-self.addEventListener('fetch', () => {})
+// Service worker — for background push only. No fetch handler: Chrome no
+// longer requires one for installability and warns that an empty one
+// ("no-op fetch handler") slows navigation. No caching either: Anix is
+// realtime/Firestore-driven and blanket caching could serve stale data.
 
 // Push notifications (#006, 2026-09-21): a service worker is the only
 // place a *background* (app/tab closed) push can be received and shown

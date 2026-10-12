@@ -1,7 +1,7 @@
 {
   "name": "Anix",
   "short_name": "Anix",
-  "description": "Anonymous chat rooms and anonymous messages, with seasonal theming.",
+  "description": "Anonymous messages, games & chat rooms.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8f5fd",
