@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthUser } from '../../shared/auth-store.js'
+import { usePopOnNew } from '../../shared/hooks/use-pop-on-new.js'
 import Button from '../../shared/components/Button.jsx'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import MessageCard from '../../shared/components/MessageCard.jsx'
@@ -34,7 +35,7 @@ export default function ThreadScreen() {
   const showToast = useToast()
   const { user, loading: authLoading } = useAuthUser()
   const [thread, setThread] = useState(undefined) // undefined = loading, null = not opened yet
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState(null) // null until the first snapshot
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -46,6 +47,9 @@ export default function ThreadScreen() {
   useEffect(() => (thread ? subscribeToThreadMessages(threadId, setMessages) : undefined), [threadId, thread])
 
   const side = thread && user && thread.ownerId === user.uid ? 'owner' : 'sender'
+  // Pop when the other side sends something while this is open.
+  const fromOtherSide = useCallback((message) => message.from !== side, [side])
+  usePopOnNew(messages || [], { ready: messages !== null, isIncoming: fromOtherSide })
   const ready = thread !== undefined && !authLoading
   const unreadForMe = thread && (side === 'owner' ? thread.ownerUnread : thread.senderUnread)
 
@@ -59,7 +63,7 @@ export default function ThreadScreen() {
     requestAnimationFrame(() => {
       if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     })
-  }, [messages.length])
+  }, [messages?.length])
 
   const ended = thread?.status === 'ended'
 
@@ -141,14 +145,14 @@ export default function ThreadScreen() {
           </div>
         ) : (
           <>
-            {messages.length === 0 && (
+            {messages?.length === 0 && (
               <p className="thread__hint">
                 {side === 'owner'
                   ? "reply privately — only they'll see it, and you still won't know who they are 👀"
                   : 'they opened a private chat with you 👀'}
               </p>
             )}
-            {messages.map((message, index) => {
+            {(messages || []).map((message, index) => {
               const mine = message.from === side
               const showGap = index > 0 && messages[index - 1].from !== message.from
               return (

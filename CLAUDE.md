@@ -1175,3 +1175,20 @@ the browser-tab favicon keep `icon.svg` (full tile, already rounded with
 transparent corners). Exception: `apple-touch-icon.png` stays full-bleed
 (from icon-maskable.svg) — iOS fills transparency with black and rounds
 the corners itself.
+
+## Notification sounds (2026-10-12)
+
+- **In app**: `src/shared/sounds.js` synthesizes a short "pop" with Web
+  Audio (no audio file). Audio unlocks on the first tap/keypress (browser
+  autoplay rules); max one pop per 400ms. `usePopOnNew` /
+  `usePopOnIncrease` (shared/hooks/use-pop-on-new.js) never pop for what
+  is already there on load. Wired: NavBar (unread total up = new sealed
+  message or private reply, on any signed-in screen — needs
+  `useUnreadCounts().loaded`), ThreadScreen (other side's message),
+  ChatRoom (others' messages sent after you opened the room — not older
+  ones loading on scroll-up), sender page MyConversations (owner replied).
+  Profile → "sounds" switch (`anix:sounds`, on by default).
+- **Out of app**: browsers don't let web push choose a sound — the OS
+  default plays. sw.js adds `vibrate` (Android), a per-destination `tag`
+  with `renotify: true` so each new message re-alerts. Untested on a real
+  device so far.

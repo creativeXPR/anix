@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { usePopOnIncrease } from '../../shared/hooks/use-pop-on-new.js'
 import { getMyThreads, subscribeToThread } from './threads.js'
 
 const SHOWN = 5
@@ -22,6 +23,10 @@ export default function MyConversations({ endpointId, handle }) {
     )
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
   }, [mine])
+
+  // Pop when the owner replies while the sender is on the link page.
+  const newReplies = Object.values(threads).filter((thread) => thread?.senderUnread).length
+  usePopOnIncrease(newReplies, Object.keys(threads).length === mine.length)
 
   if (mine.length === 0) return null
 

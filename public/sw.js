@@ -34,6 +34,14 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icon-192.png',
     // App path to open on tap (set by the Cloud Functions: /chats, /t/…).
     data: { link: payload.data?.link || '/' },
+    // Web notifications can't pick a custom sound — the OS default plays.
+    // What we can do: a short "pop-pop" buzz on Android, and one
+    // notification per destination (tag) that re-alerts on each new
+    // message instead of silently replacing the last one.
+    vibrate: [70, 50, 70],
+    tag: payload.data?.link || 'anix',
+    renotify: true,
+    silent: false,
   })
 })
 

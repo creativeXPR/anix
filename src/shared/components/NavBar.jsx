@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useUnreadCounts } from '../../features/inbox/use-unread-counts.js'
 import { useAuthUser } from '../auth-store.js'
+import { usePopOnIncrease } from '../hooks/use-pop-on-new.js'
 import HomeIcon from '../icons/HomeIcon.jsx'
 import MessageIcon from '../icons/MessageIcon.jsx'
 import ProfileIcon from '../icons/ProfileIcon.jsx'
@@ -14,7 +15,10 @@ const NAV_ITEMS = [
 
 export default function NavBar({ orientation }) {
   const { user } = useAuthUser()
-  const { total: unread } = useUnreadCounts(user?.uid)
+  const { total: unread, loaded } = useUnreadCounts(user?.uid)
+  // The nav is on every signed-in screen, so it's where "a new anonymous
+  // message / private reply arrived" pops from.
+  usePopOnIncrease(unread, loaded)
 
   return (
     <nav className={`nav-bar nav-bar--${orientation}`}>

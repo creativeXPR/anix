@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthUser } from '../../shared/auth-store.js'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import FunEmpty from '../../shared/components/FunEmpty.jsx'
 import ItemSettingsSheet from '../../shared/components/ItemSettingsSheet.jsx'
 import { useAnonymousParticipant } from '../../shared/hooks/use-anonymous-participant.js'
+import { usePopOnNew } from '../../shared/hooks/use-pop-on-new.js'
 import BackIcon from '../../shared/icons/BackIcon.jsx'
 import SettingsIcon from '../../shared/icons/SettingsIcon.jsx'
 import { DEFAULT_ROOM_EMOJI } from '../../shared/room-defaults.js'
@@ -53,6 +54,15 @@ export default function ChatRoomScreen() {
   const [room, setRoom] = useState(null)
   const [pendingMessages, setPendingMessages] = useState([])
   const [presenceCount, setPresenceCount] = useState(0)
+  // Pop for other people's new messages — not yours, and not older ones
+  // that load in when scrolling up (only messages sent after you opened
+  // the room count). A brand-new message's createdAt is briefly null.
+  const [openedAt] = useState(() => Date.now())
+  const fromSomeoneElse = useCallback(
+    (message) => message.senderId !== participantId && (message.createdAt?.toMillis?.() ?? Date.now()) > openedAt,
+    [participantId, openedAt],
+  )
+  usePopOnNew(messages, { ready: !initialLoading, isIncoming: fromSomeoneElse })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
