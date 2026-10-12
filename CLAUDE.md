@@ -1258,3 +1258,24 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   `/welcome/guidelines` page, linked from footer, Safety, Terms, sender
   page. Terms/Privacy/Safety describe the automated checks.
 - Deploy order: enable the API → functions → hosting → rules + indexes.
+
+## Functions on Node 24 + EU send path (2026-10-12)
+
+- Cloud Functions runtime moved Node 20 → **24** (Node 20 decommissioned
+  2026-10-30); firebase-functions 5 → 7.4, firebase-admin 12 → 14.5 —
+  all 13 functions load unchanged (already v2-style APIs).
+- `sendAnonymousMessage` / `sendThreadMessage` now run in
+  **europe-west1**, next to the `anix` database (client:
+  `sendFunctions` in shared/firebase.js). Measured warm round-trip
+  ~0.55–0.65s vs 1.2–3.2s from us-central1. TRANSITION: they are still
+  ALSO deployed in us-central1 (`SEND_REGIONS`) so already-open old
+  clients keep working — remove 'us-central1' from SEND_REGIONS and
+  redeploy once old tabs have refreshed (a day or so is plenty).
+- No min instances: the first send after ~15 min idle takes ~1–2s more
+  (cold start). Accepted for now (one-line `minInstances: 1` if wanted).
+- Private chats show your own message instantly (faded "pending")
+  until the server has moderated and saved it.
+- Images are NOT moderated (user decided, 2026-10-12).
+- c-xpr25 also hosts MulTeam's functions (codebase "multeam",
+  europe-west1, nodejs22). Anix deploys are codebase "default", so
+  `--force` here never deletes them.

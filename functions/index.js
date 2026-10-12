@@ -225,8 +225,14 @@ function cleanText(text) {
   return t
 }
 
+// The send callables run next to the `anix` database (europe-west1) so a
+// send isn't several transatlantic round-trips. TRANSITION: also still in
+// us-central1 so already-open old clients keep working until they
+// refresh — drop 'us-central1' from SEND_REGIONS after this deploy lands.
+const SEND_REGIONS = ['europe-west1', 'us-central1']
+
 // Anonymous message to a link. No account needed (that's the feature).
-exports.sendAnonymousMessage = onCall(async (request) => {
+exports.sendAnonymousMessage = onCall({ region: SEND_REGIONS }, async (request) => {
   const { endpointId, text, threadId, senderKey } = request.data || {}
   if (!CODE_RE.test(String(endpointId || ''))) throw new HttpsError('invalid-argument', 'Unknown link.')
   if (!SECRET_RE.test(String(threadId || '')) || !SECRET_RE.test(String(senderKey || ''))) {
@@ -258,7 +264,7 @@ exports.sendAnonymousMessage = onCall(async (request) => {
 // A message in a private two-way conversation. The side is decided here
 // (signed-in thread owner = 'owner', anyone else holding the id = 'sender'),
 // not trusted from the client.
-exports.sendThreadMessage = onCall(async (request) => {
+exports.sendThreadMessage = onCall({ region: SEND_REGIONS }, async (request) => {
   const { threadId, text } = request.data || {}
   if (!SECRET_RE.test(String(threadId || ''))) throw new HttpsError('invalid-argument', 'Unknown conversation.')
   const body = cleanText(text)

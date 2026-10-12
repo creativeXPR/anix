@@ -40,7 +40,9 @@ export default function ThreadScreen() {
   const [thread, setThread] = useState(undefined) // undefined = loading, null = not opened yet
   const [messages, setMessages] = useState(null) // null until the first snapshot
   const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
+  // Your just-sent messages, shown instantly (faded) until the server has
+  // moderated + saved them and they arrive in `messages`.
+  const [pending, setPending] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [reporting, setReporting] = useState(false)
   const [revealed, setRevealed] = useState(() => new Set()) // filtered messages the reader chose to see
@@ -68,22 +70,23 @@ export default function ThreadScreen() {
     requestAnimationFrame(() => {
       if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     })
-  }, [messages?.length])
+  }, [messages?.length, pending.length])
 
   const ended = thread?.status === 'ended'
 
   async function handleSend() {
-    if (!text.trim() || ended || sending) return
-    setSending(true)
+    if (!text.trim() || ended) return
     const draft = text
+    const temp = { id: `pending-${Date.now()}`, text: draft.trim() }
     setText('')
+    setPending((current) => [...current, temp])
     try {
       await sendThreadMessage(threadId, draft)
     } catch (err) {
       setText(draft)
       showToast(String(err?.message || "Couldn't send — this conversation may have ended"), 'error')
     } finally {
-      setSending(false)
+      setPending((current) => current.filter((p) => p.id !== temp.id))
     }
   }
 
@@ -185,6 +188,17 @@ export default function ThreadScreen() {
                 </div>
               )
             })}
+            {pending
+              .filter((p) => !(messages || []).some((m) => m.from === side && m.text === p.text && (m.createdAt?.toMillis?.() ?? Date.now()) > Number(p.id.slice(8)) - 5000))
+              .map((p) => (
+                <div key={p.id} className="bubble-row bubble-row--own bubble-row--pending">
+                  <div className="bubble-wrap">
+                    <div className="bubble bubble--own">
+                      <p className="bubble__text">{p.text}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             {side === 'sender' && pushConfigured() && !ended && <NotifyMeButton threadId={threadId} compact />}
           </>
         )}
@@ -213,7 +227,7 @@ export default function ThreadScreen() {
               type="button"
               className="composer__send"
               onClick={handleSend}
-              disabled={!text.trim() || sending}
+              disabled={!text.trim()}
               aria-label="Send"
             >
               <ArrowRightIcon />

@@ -14,7 +14,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../../shared/firebase.js'
+import { db, sendFunctions } from '../../shared/firebase.js'
 
 // Anonymous two-way reply (phase 2, 2026-10-12).
 //
@@ -150,7 +150,7 @@ export async function openThread({ endpoint, message, ownerId }) {
 // works out which side you are (signed-in owner vs. id holder), enforces
 // blocks and updates the unread bookkeeping (2026-10-12).
 export async function sendThreadMessage(threadId, text) {
-  const call = httpsCallable(functions, 'sendThreadMessage')
+  const call = httpsCallable(sendFunctions, 'sendThreadMessage')
   await call({ threadId, text: text.trim() })
 }
 

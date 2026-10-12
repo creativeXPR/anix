@@ -13,7 +13,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../../shared/firebase.js'
+import { db, functions, sendFunctions } from '../../shared/firebase.js'
 
 const PAGE_SIZE = 50
 
@@ -54,7 +54,7 @@ function endpointMessagesRef(endpointId) {
 // (features/threads/threads.js): the capability for a later private
 // conversation, and the key a block applies to.
 export async function sendAnonymousMessage(endpointId, text, { threadId, senderKey }) {
-  const call = httpsCallable(functions, 'sendAnonymousMessage')
+  const call = httpsCallable(sendFunctions, 'sendAnonymousMessage')
   const result = await call({ endpointId, text: text.trim(), threadId, senderKey })
   return result.data.id
 }

@@ -22,6 +22,9 @@ export const firebaseApp = initializeApp(firebaseConfig)
 export const db = getFirestore(firebaseApp, 'anix')
 export const storage = getStorage(firebaseApp)
 export const functions = getFunctions(firebaseApp)
+// The moderated send callables live next to the `anix` database
+// (europe-west1) — see functions/index.js SEND_REGIONS.
+export const sendFunctions = getFunctions(firebaseApp, 'europe-west1')
 export const googleProvider = new GoogleAuthProvider()
 
 // Lazy, unlike db/storage above: getAuth() validates the API key
