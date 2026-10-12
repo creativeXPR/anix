@@ -1161,3 +1161,17 @@ threads live in Chats ("💬 convos" chip); sender sees "your messages to
 - Push needs `VITE_FIREBASE_VAPID_KEY` in `.env` at build time — the
   2026-10-12 hosting deploy went out without it (new push sign-ups
   disabled) until it's added and hosting is redeployed.
+
+## App icon: rounded glossy tile everywhere (2026-10-12)
+
+User wanted the installed app icon to show the glossy ghost as a rounded
+tile with transparent corners. The manifest's `maskable` entry (a
+full-bleed square) is what Android launchers preferred, which hid the
+rounded tile — it's removed. `public/app-icon.svg` = icon.svg's tile
+inset (transparent margin so launchers never clip the corners) + a light
+inner rim and faint purple outer edge; icon-192/512.png are rendered from
+it and are the only manifest icons (plus app-icon.svg). In-app logos and
+the browser-tab favicon keep `icon.svg` (full tile, already rounded with
+transparent corners). Exception: `apple-touch-icon.png` stays full-bleed
+(from icon-maskable.svg) — iOS fills transparency with black and rounds
+the corners itself.

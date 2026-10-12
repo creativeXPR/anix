@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Installed-app icon (PWA): icon.svg's glossy tile inset with a
+       transparent margin so launchers never clip the rounded corners, plus
+       a light inner rim and a faint purple outer edge so the rounded border
+       reads on both light and dark wallpapers. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3e6ff"/>
+      <stop offset="1" stop-color="#cba2f2"/>
+    </linearGradient>
+    <linearGradient id="tileGloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="body" cx=".34" cy=".22" r=".9">
+      <stop offset="0" stop-color="#c27dff"/>
+      <stop offset=".38" stop-color="#7d25d6"/>
+      <stop offset=".78" stop-color="#55109a"/>
+      <stop offset="1" stop-color="#3a0567"/>
+    </radialGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="eye" cx=".4" cy=".3" r=".75">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e2d0f6"/>
+    </radialGradient>
+    <filter id="blur14" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
+    <filter id="blur6" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+    <clipPath id="ghostClip">
+      <path d="M256 100C174 100 128 164 128 244V352C116 372 104 388 112 399C122 412 150 398 171 398C195 398 213 416 235 416C247 416 251 410 256 410C261 410 265 416 277 416C299 416 317 398 341 398C362 398 390 412 400 399C408 388 396 372 384 352V244C384 164 338 100 256 100Z"/>
+    </clipPath>
+  </defs>
+
+  <g transform="translate(256 256) scale(0.875) translate(-256 -256)">
+  <!-- tile -->
+  <rect width="512" height="512" rx="118" fill="url(#tile)"/>
+  <rect x="18" y="14" width="476" height="236" rx="108" fill="url(#tileGloss)"/>
+
+  <!-- contact shadow -->
+  <ellipse cx="256" cy="440" rx="138" ry="20" fill="#4a0a85" opacity=".38" filter="url(#blur14)"/>
+
+  <!-- body -->
+  <path d="M256 100C174 100 128 164 128 244V352C116 372 104 388 112 399C122 412 150 398 171 398C195 398 213 416 235 416C247 416 251 410 256 410C261 410 265 416 277 416C299 416 317 398 341 398C362 398 390 412 400 399C408 388 396 372 384 352V244C384 164 338 100 256 100Z" fill="url(#body)"/>
+
+  <g clip-path="url(#ghostClip)">
+    <!-- bounce light on the lower right -->
+    <ellipse cx="358" cy="320" rx="30" ry="80" fill="#d79bff" opacity=".18" filter="url(#blur14)"/>
+    <!-- inner rim shade along the bottom -->
+    <ellipse cx="256" cy="430" rx="190" ry="40" fill="#2a0350" opacity=".45" filter="url(#blur14)"/>
+    <!-- main specular streak -->
+    <ellipse cx="196" cy="186" rx="34" ry="70" transform="rotate(32 196 186)" fill="url(#shine)"/>
+  </g>
+  <!-- sparkle dot -->
+  <circle cx="244" cy="136" r="11" fill="#ffffff" opacity=".85"/>
+
+  <!-- eyes -->
+  <ellipse cx="214" cy="238" rx="25" ry="33" fill="url(#eye)"/>
+  <ellipse cx="298" cy="238" rx="25" ry="33" fill="url(#eye)"/>
+  <ellipse cx="207" cy="226" rx="7" ry="9" fill="#ffffff"/>
+  <ellipse cx="291" cy="226" rx="7" ry="9" fill="#ffffff"/>
+    <!-- rim: light inner highlight + faint purple outer edge -->
+    <rect x="5" y="5" width="502" height="502" rx="113" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="10"/>
+    <rect x="-1.5" y="-1.5" width="515" height="515" rx="120" fill="none" stroke="#5b0e98" stroke-opacity=".28" stroke-width="3"/>
+  </g>
+</svg>
