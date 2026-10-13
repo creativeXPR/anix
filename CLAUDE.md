@@ -1375,3 +1375,25 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   the link is also copied to the clipboard (story apps drop shared text →
   link sticker). Desktop fallback copies the image with the link as its
   text/plain form, else downloads + copies the link.
+
+## Placeholders match the real layouts + emoji panel (2026-10-13)
+- **Skeletons** (shared/components/Skeletons.jsx/.css) replace the old
+  CardSkeleton/PageSkeleton/MessageSkeleton, each shaped like what it
+  stands in for, on one `.skel` shimmer: `LinkCardSkeleton` (game band +
+  avatar row + copy pill/round buttons; `kind="room"` without band) in a
+  `home-grid`, `InboxSkeleton` (chips + tilted tile grid), `ChatSkeleton`
+  (`room`: name label + white/gradient bubbles; `thread`: "their message"
+  card + bubbles — the private chat used to show nothing while loading),
+  `PageSkeleton` (brand, heading, link cards) for the auth check.
+- **Emoji panel** (shared/emoji/): WhatsApp-style — search (keywords in
+  emoji-data.js, Emoji ≤13), category tabs that follow scroll, Recent
+  (localStorage `anix:emoji-recent`), ⌫ deletes one grapheme. Lazy-loaded
+  chunk (~10 kB gz). `useEmojiInput({inputRef, value, setValue,
+  maxLength})` inserts at the caret; on touch devices opening the panel
+  blurs the field (hides the keyboard) and tapping the field swaps back.
+  Used in the room Composer, private-chat composer, the link page's
+  message box (button opposite the 🎲) and the answer box.
+- Visual checks used a mock harness (Firebase modules aliased to fakes in
+  a throwaway vite config; `?loading=data|auth` to freeze loading states).
+  Gotcha: run node/CDP scripts with `MSYS_NO_PATHCONV=1` in Git Bash or
+  "/chats" args become "C:/Program Files/Git/chats".

@@ -1,5 +1,7 @@
 import { doc, getDoc } from 'firebase/firestore'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { EmojiPanelSlot, EmojiToggle } from '../../shared/emoji/EmojiToggle.jsx'
+import { useEmojiInput } from '../../shared/emoji/use-emoji-input.js'
 import { Link, useParams } from 'react-router-dom'
 import Button from '../../shared/components/Button.jsx'
 import { db } from '../../shared/firebase.js'
@@ -18,6 +20,8 @@ export default function AnonymousMessageScreen() {
   // undefined = still loading, null = no such link (deleted or mistyped).
   const [endpoint, setEndpoint] = useState(undefined)
   const [text, setText] = useState('')
+  const textRef = useRef(null)
+  const emoji = useEmojiInput({ inputRef: textRef, value: text, setValue: setText, maxLength: 1000 })
   const [sending, setSending] = useState(false)
   // The secret thread id of the message just sent (falsy = composing).
   const [sent, setSent] = useState(null)
@@ -131,6 +135,8 @@ export default function AnonymousMessageScreen() {
               </header>
               <div className="anon-message__box">
                 <textarea
+                  ref={textRef}
+                  {...emoji.fieldProps}
                   value={text}
                   onChange={(event) => setText(event.target.value)}
                   placeholder={`${promptOf(endpoint)}…`}
@@ -149,8 +155,10 @@ export default function AnonymousMessageScreen() {
                 >
                   🎲
                 </button>
+                <EmojiToggle open={emoji.open} onToggle={emoji.toggle} className="anon-message__emoji" />
               </div>
             </div>
+            <EmojiPanelSlot open={emoji.open} onPick={emoji.insert} onBackspace={emoji.backspace} />
 
             <p className="anon-message__note">
               🔒 anonymous q&amp;a · by sending you agree to our{' '}

@@ -1,0 +1,183 @@
+/* Shared loading shimmer: a soft highlight sweeping across a brand-tinted
+   base. Everything in Skeletons.jsx is built from `.skel` blocks. */
+.skel {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in srgb, var(--panel) 75%, transparent) 50%,
+      transparent 80%
+    )
+    var(--accent-bg);
+  background-size: 220% 100%;
+  animation: skel-shimmer 1.5s ease-in-out infinite;
+}
+
+.skel--pill,
+.skel--circle {
+  border-radius: 999px;
+}
+
+.skel--tile {
+  border-radius: 16px;
+}
+
+/* light blocks on a coloured band */
+.skel--on-band {
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+@keyframes skel-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+/* ---- LinkCard ---- */
+.skel-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.skel-card__band {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 14px 18px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--grad-from) 30%, var(--panel)), color-mix(in srgb, var(--grad-to) 30%, var(--panel)));
+}
+
+.skel-card__band--center {
+  justify-content: center;
+  min-height: 52px;
+}
+
+.skel-card__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 12px;
+}
+
+.skel-card__lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skel-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+/* ---- inbox ---- */
+.skel-inbox__chips {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.skel-inbox__tile {
+  aspect-ratio: 1 / 1.05;
+  border-radius: 26px;
+  transform: rotate(var(--tilt, 0deg));
+  box-shadow: var(--shadow);
+}
+
+/* ---- chat bubbles ---- */
+.skel-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skel-chat__row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.skel-chat__row--other {
+  align-items: flex-start;
+}
+
+.skel-chat__row--own {
+  align-items: flex-end;
+}
+
+.skel-chat__bubble {
+  border-radius: 20px;
+}
+
+.skel-chat__bubble--other {
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 8px;
+  background-color: var(--panel);
+}
+
+.skel-chat__bubble--own {
+  border-bottom-right-radius: 8px;
+  background-color: color-mix(in srgb, var(--primary) 26%, var(--panel));
+}
+
+.skel-chat__original {
+  width: min(340px, 100%);
+  margin: 0 auto 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.skel-chat__card {
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.skel-chat__card-body {
+  display: flex;
+  justify-content: center;
+  padding: 22px 18px;
+}
+
+/* ---- whole page (auth still resolving) ---- */
+.skel-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 16px 16px 36px;
+  box-sizing: border-box;
+}
+
+.skel-page__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.skel-page__section {
+  margin-top: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel {
+    animation: none;
+  }
+}

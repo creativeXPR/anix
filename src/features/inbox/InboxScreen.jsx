@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../shared/auth-store.js'
-import CardSkeleton from '../../shared/components/CardSkeleton.jsx'
+import { InboxSkeleton } from '../../shared/components/Skeletons.jsx'
 import FunEmpty from '../../shared/components/FunEmpty.jsx'
 import MessageCard from '../../shared/components/MessageCard.jsx'
 import Page from '../../shared/components/Page.jsx'
@@ -156,7 +156,7 @@ export default function InboxScreen() {
           ))}
         </div>
       ) : endpoints === null || !loaded ? (
-        <CardSkeleton />
+        <InboxSkeleton />
       ) : endpoints.length === 0 ? (
         <FunEmpty
           emoji="📭"

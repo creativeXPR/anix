@@ -7,6 +7,9 @@ import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import MessageCard from '../../shared/components/MessageCard.jsx'
 import ReportSheet from '../../shared/components/ReportSheet.jsx'
 import SendStatus from '../../shared/components/SendStatus.jsx'
+import { ChatSkeleton } from '../../shared/components/Skeletons.jsx'
+import { EmojiPanelSlot, EmojiToggle } from '../../shared/emoji/EmojiToggle.jsx'
+import { useEmojiInput } from '../../shared/emoji/use-emoji-input.js'
 import Sheet from '../../shared/components/Sheet.jsx'
 import ArrowRightIcon from '../../shared/icons/ArrowRightIcon.jsx'
 import BackIcon from '../../shared/icons/BackIcon.jsx'
@@ -74,6 +77,8 @@ export default function ThreadScreen() {
   }, [messages?.length, pending.length])
 
   const ended = thread?.status === 'ended'
+  const inputRef = useRef(null)
+  const emoji = useEmojiInput({ inputRef, value: text, setValue: setText, maxLength: 1000 })
 
   // ✓✓ "seen": the other side has replied after this message, or opened
   // the chat since your last message (their unread flag is cleared).
@@ -150,6 +155,8 @@ export default function ThreadScreen() {
       </header>
 
       <div className="thread__body" ref={scrollRef}>
+        {!ready && !original && <ChatSkeleton variant="thread" />}
+
         {original && (
           <div className="thread__original">
             <small>{side === 'owner' ? 'their message' : 'your message'}</small>
@@ -228,7 +235,10 @@ export default function ThreadScreen() {
       {thread && !ended && (
         <div className="composer">
           <div className="composer__row">
+            <EmojiToggle open={emoji.open} onToggle={emoji.toggle} className="composer__emoji" />
             <textarea
+              ref={inputRef}
+              {...emoji.fieldProps}
               className="composer__input"
               value={text}
               onChange={(event) => setText(event.target.value.slice(0, 1000))}
@@ -252,6 +262,7 @@ export default function ThreadScreen() {
               <ArrowRightIcon />
             </button>
           </div>
+          <EmojiPanelSlot open={emoji.open} onPick={emoji.insert} onBackspace={emoji.backspace} />
         </div>
       )}
 

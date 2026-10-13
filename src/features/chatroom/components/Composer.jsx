@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import ArrowRightIcon from '../../../shared/icons/ArrowRightIcon.jsx'
 import CloseIcon from '../../../shared/icons/CloseIcon.jsx'
 import ImageIcon from '../../../shared/icons/ImageIcon.jsx'
+import { EmojiPanelSlot, EmojiToggle } from '../../../shared/emoji/EmojiToggle.jsx'
+import { useEmojiInput } from '../../../shared/emoji/use-emoji-input.js'
 import './Composer.css'
 
 const TYPING_STOP_DELAY_MS = 2000
@@ -11,13 +13,18 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
   const [imageFile, setImageFile] = useState(null)
   const typingTimeoutRef = useRef(null)
   const fileInputRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     return () => clearTimeout(typingTimeoutRef.current)
   }, [])
 
   function handleTextChange(event) {
-    setText(event.target.value)
+    updateText(event.target.value)
+  }
+
+  function updateText(value) {
+    setText(value)
 
     onTypingChange(true)
     clearTimeout(typingTimeoutRef.current)
@@ -25,6 +32,8 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
       onTypingChange(false)
     }, TYPING_STOP_DELAY_MS)
   }
+
+  const emoji = useEmojiInput({ inputRef, value: text, setValue: updateText })
 
   function handleSend() {
     if (!text.trim() && !imageFile) return
@@ -93,12 +102,15 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
           hidden
           onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
         />
+        <EmojiToggle open={emoji.open} onToggle={emoji.toggle} className="composer__emoji" disabled={disabled} />
         <textarea
+          ref={inputRef}
+          {...emoji.fieldProps}
           className="composer__input"
           value={text}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? 'this room is closed' : 'say something anonymous…'}
+          placeholder={disabled ? 'this room is closed' : 'say something…'}
           aria-label="Message"
           rows={1}
           disabled={disabled}
@@ -113,6 +125,7 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
           <ArrowRightIcon />
         </button>
       </div>
+      <EmojiPanelSlot open={emoji.open && !disabled} onPick={emoji.insert} onBackspace={emoji.backspace} />
     </div>
   )
 }

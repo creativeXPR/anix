@@ -14,7 +14,7 @@ import { messageGradient, messageGradientVars } from '../../shared/utils/message
 import { getLastVisit, markVisited } from '../../shared/utils/room-visits.js'
 import Composer from './components/Composer.jsx'
 import MessageBubble from './components/MessageBubble.jsx'
-import MessageSkeleton from './components/MessageSkeleton.jsx'
+import { ChatSkeleton } from '../../shared/components/Skeletons.jsx'
 import TypingIndicator from './components/TypingIndicator.jsx'
 import {
   canSendNow,
@@ -300,11 +300,7 @@ export default function ChatRoomScreen() {
 
       <div className="chat-room__messages" ref={scrollRef} onScroll={handleScroll}>
         {initialLoading ? (
-          <>
-            <MessageSkeleton align="left" width={140} />
-            <MessageSkeleton align="right" width={180} />
-            <MessageSkeleton align="left" width={120} />
-          </>
+          <ChatSkeleton variant="room" />
         ) : visibleMessages.length === 0 ? (
           <FunEmpty emoji="👋" title="say hi!" text="nobody's said anything yet — be the first. you're anonymous here." />
         ) : (

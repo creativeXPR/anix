@@ -13,7 +13,7 @@ import {
   subscribeToOwnedEndpoints,
   updateEndpointSettings,
 } from '../inbox/inbox.js'
-import CardSkeleton from '../../shared/components/CardSkeleton.jsx'
+import { LinkCardSkeleton } from '../../shared/components/Skeletons.jsx'
 import CreateLinkModal from '../../shared/components/CreateLinkModal.jsx'
 import FunEmpty from '../../shared/components/FunEmpty.jsx'
 import LinkCard from '../../shared/components/LinkCard.jsx'
@@ -90,7 +90,10 @@ export default function HomeScreen() {
           {endpoints !== null && <small>{endpoints.length}/{MAX_PER_TYPE}</small>}
         </div>
         {endpoints === null ? (
-          <CardSkeleton />
+          <div className="home-grid">
+            <LinkCardSkeleton />
+            <LinkCardSkeleton />
+          </div>
         ) : endpoints.length === 0 ? (
           <FunEmpty
             emoji="💌"
@@ -128,10 +131,9 @@ export default function HomeScreen() {
           {rooms !== null && <small>{rooms.length}/{MAX_PER_TYPE}</small>}
         </div>
         {rooms === null ? (
-          <>
-            <CardSkeleton />
-            <CardSkeleton />
-          </>
+          <div className="home-grid">
+            <LinkCardSkeleton kind="room" />
+          </div>
         ) : rooms.length === 0 ? (
           <FunEmpty
             emoji="🫧"

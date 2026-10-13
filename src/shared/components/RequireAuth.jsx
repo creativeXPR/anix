@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthUser } from '../auth-store.js'
-import PageSkeleton from './PageSkeleton.jsx'
+import { PageSkeleton } from './Skeletons.jsx'
 
 // Home/Chats/Profile all need a signed-in account (creating your one room,
 // owning your message link, an inbox to protect) — the chat room and

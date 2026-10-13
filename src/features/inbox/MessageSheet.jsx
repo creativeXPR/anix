@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { EmojiPanelSlot, EmojiToggle } from '../../shared/emoji/EmojiToggle.jsx'
+import { useEmojiInput } from '../../shared/emoji/use-emoji-input.js'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../shared/auth-store.js'
 import Button from '../../shared/components/Button.jsx'
@@ -29,6 +31,8 @@ export default function MessageSheet({ message, endpoint, thread, onClose }) {
   // Captured on open: was it sealed? (the snapshot flips to read quickly)
   const [wasSealed] = useState(() => isUnread(message))
   const [answer, setAnswer] = useState(message.answer || '')
+  const answerRef = useRef(null)
+  const emoji = useEmojiInput({ inputRef: answerRef, value: answer, setValue: setAnswer, maxLength: ANSWER_MAX })
   const [previewUrl, setPreviewUrl] = useState(null)
   const [busy, setBusy] = useState(null) // 'preview' | 'share' | 'reply' | null
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -119,14 +123,20 @@ export default function MessageSheet({ message, endpoint, thread, onClose }) {
         className={`message-sheet__card${wasSealed ? ' message-sheet__card--reveal' : ''}`}
       />
 
-      <textarea
-        className="field"
-        value={answer}
-        onChange={(event) => setAnswer(event.target.value.slice(0, ANSWER_MAX))}
-        placeholder="type your answer… (optional)"
-        aria-label="Your answer"
-        rows={3}
-      />
+      <div className="field-with-emoji">
+        <textarea
+          ref={answerRef}
+          {...emoji.fieldProps}
+          className="field"
+          value={answer}
+          onChange={(event) => setAnswer(event.target.value.slice(0, ANSWER_MAX))}
+          placeholder="type your answer… (optional)"
+          aria-label="Your answer"
+          rows={3}
+        />
+        <EmojiToggle open={emoji.open} onToggle={emoji.toggle} className="field-with-emoji__toggle" />
+      </div>
+      <EmojiPanelSlot open={emoji.open} onPick={emoji.insert} onBackspace={emoji.backspace} />
 
       {previewUrl && (
         <img ref={previewRef} className="message-sheet__preview pop-in" src={previewUrl} alt="Story image preview" />
