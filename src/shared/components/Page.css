@@ -59,6 +59,13 @@
     margin-right: auto;
   }
 
+  /* Centring wins over a child's own `margin: …` shorthand (the inbox
+     subtitle drifted to the left edge that way); widths stay theirs. */
+  .page .page__content > * {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   /* Same 880px column as the content below it. */
   .page__header {
     padding: 20px max(24px, calc((100% - 880px) / 2));
