@@ -1409,3 +1409,38 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   request forever: old live build → blank; new build → renders.
 - index.html head changed → functions/index-template.html regenerated →
   deploy `functions:linkPreview` along with hosting.
+
+## Football rooms — stage 1: type, fan badges, polls (2026-10-13)
+- **Owner anonymity is absolute in rooms**: nothing others can see marks
+  the owner (no host badge/colour; "room is closed" no longer says "by its
+  host"; polls carry no sender). Owner-only UI lives on the owner's device.
+- **Room type** `rooms/{id}.type`: `custom` (default, the original room)
+  | `football`. Picked in CreateLinkModal + ItemSettingsSheet
+  (features/football/RoomTypePicker.jsx); football defaults the emoji ⚽.
+- **Fan badges**: catalogue = features/football/badges.js (countries + PL,
+  La Liga, Serie A, Bundesliga, Ligue 1, NPFL, elsewhere; club colours,
+  flag emoji for countries — no crests) merged with Firestore `badges/{id}`
+  added from /admin → Badges. Your badge is per room in localStorage
+  (`anix:room:{id}:badge`) and each message carries a snapshot
+  (`badge: {id,name,colors,emoji}`) — nothing shared to hijack. Name shows
+  in `badgeNameColor()` (blended toward text colour for contrast) + chip.
+  Windows can't render flag emoji → countries show the two-colour dot there.
+- **Gear in football rooms**: guests → IdentitySheet; owner → room
+  settings with a collapsible "your fan identity" (ItemSettingsSheet
+  `children`).
+- **Badge requests**: "can't find yours?" form → `badgeRequests` (rules:
+  anyone creates, shape-checked; admin reads/deletes) → /admin Badges tab:
+  "Add as badge" pre-fills the add form (and clears the request), Dismiss
+  and Remove go through ConfirmDialog.
+- **Polls**: a room message `{type:'poll', text, options[2–4], createdAt}`
+  with no senderId (rules: validPoll). Votes at
+  `rooms/{id}/messages/{pollId}/votes/{participantId}` `{option, updatedAt}`
+  — one per guest, changeable, option index checked against the poll.
+  Composer "+" menu (📷 Photo / 📊 Poll) only in football rooms;
+  templates: who wins / man of the match / penalty or not / who's better /
+  custom; client cooldown 1 poll per minute per room.
+- Still open: room messages are NOT run through the moderation function
+  (written directly) — worth routing through it before football rooms get
+  heated. Next stages: live match card (free football-data.org +
+  API-Football, scheduled function), then stickers + sticker maker
+  (guest stickers in the browser, migrated to the account on sign-up).

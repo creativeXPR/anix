@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import RoomTypePicker from '../../features/football/RoomTypePicker.jsx'
 import { CUSTOM_PROMPT_MAX, DEFAULT_GAME, GAMES } from '../games.js'
 import { DEFAULT_ROOM_EMOJI } from '../room-defaults.js'
 import { THEME_PRESETS } from '../theme-presets.js'
@@ -17,7 +18,9 @@ import './modal.css'
 // Changes save as they're made — no Save button — matching how the old
 // inline panel worked. Opened from LinkCard (Home) and the chat room's
 // owner gear. `onDelete` should open the caller's ConfirmDialog.
-export default function ItemSettingsSheet({ item, kind, onUpdateSettings, onToggleStatus, togglingStatus, onDelete, onClose }) {
+// `children` (rooms): extra sections — the chat room passes the owner's
+// own collapsible fan identity there for football rooms.
+export default function ItemSettingsSheet({ item, kind, onUpdateSettings, onToggleStatus, togglingStatus, onDelete, onClose, children }) {
   const showToast = useToast()
   const [uploading, setUploading] = useState(false)
   const [savingTheme, setSavingTheme] = useState(false)
@@ -72,6 +75,8 @@ export default function ItemSettingsSheet({ item, kind, onUpdateSettings, onTogg
   return (
     <Sheet onClose={onClose}>
       <h2>{isRoom ? 'room settings' : 'link settings'}</h2>
+
+      {isRoom && <RoomTypePicker value={item.type || 'custom'} onChange={(type) => onUpdateSettings({ type })} />}
 
       {isRoom ? (
         <EmojiPicker value={item.emoji || DEFAULT_ROOM_EMOJI} onChange={(emoji) => onUpdateSettings({ emoji })} />
@@ -144,6 +149,8 @@ export default function ItemSettingsSheet({ item, kind, onUpdateSettings, onTogg
           />
         </div>
       )}
+
+      {children}
 
       <Button variant="secondary" size="sm" onClick={onDelete} style={{ alignSelf: 'center' }}>
         <TrashIcon />

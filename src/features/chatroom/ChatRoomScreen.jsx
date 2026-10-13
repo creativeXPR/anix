@@ -16,6 +16,10 @@ import Composer from './components/Composer.jsx'
 import MessageBubble from './components/MessageBubble.jsx'
 import { ChatSkeleton } from '../../shared/components/Skeletons.jsx'
 import TypingIndicator from './components/TypingIndicator.jsx'
+import { useRoomBadge } from '../football/football-data.js'
+import { IdentityPicker, IdentitySheet } from '../football/IdentityPicker.jsx'
+import PollCard from '../football/PollCard.jsx'
+import PollComposer from '../football/PollComposer.jsx'
 import {
   canSendNow,
   deleteRoomHandle,
@@ -64,6 +68,9 @@ export default function ChatRoomScreen() {
   )
   usePopOnNew(messages, { ready: !initialLoading, isIncoming: fromSomeoneElse })
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [identityOpen, setIdentityOpen] = useState(false)
+  const [pollOpen, setPollOpen] = useState(false)
+  const [badge, setBadge] = useRoomBadge(roomId)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const scrollRef = useRef(null)
@@ -191,6 +198,10 @@ export default function ChatRoomScreen() {
   // The owner (signed in, viewing their own room) gets the settings gear —
   // same sheet as Home's room card.
   const isOwner = Boolean(user && room?.ownerId === user.uid)
+  // Football rooms: everyone gets the gear — for the owner it opens room
+  // settings (with their own fan identity folded inside), for everyone
+  // else just their fan identity. Nothing visible to others differs.
+  const isFootball = room?.type === 'football'
 
   async function handleDeleteRoom() {
     setConfirmingDelete(false)
@@ -222,6 +233,7 @@ export default function ChatRoomScreen() {
         text: text.trim(),
         imageUrl: localImageUrl,
         senderId: participantId,
+        badge: isFootball ? badge : null,
         replyTo: activeReplyTo
           ? { id: activeReplyTo.id, text: activeReplyTo.text, senderId: activeReplyTo.senderId }
           : null,
@@ -240,6 +252,7 @@ export default function ChatRoomScreen() {
         text,
         replyTo: activeReplyTo,
         imageFile,
+        badge: isFootball ? badge : null,
         onProgress: (progress) =>
           setPendingMessages((current) => current.map((m) => (m.id === tempId ? { ...m, progress } : m))),
       })
@@ -286,12 +299,12 @@ export default function ChatRoomScreen() {
             anonymous
           </small>
         </div>
-        {isOwner && (
+        {(isOwner || isFootball) && (
           <button
             type="button"
             className="chat-room__icon-button chat-room__settings"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Room settings"
+            onClick={() => (isOwner ? setSettingsOpen(true) : setIdentityOpen(true))}
+            aria-label={isOwner ? 'Room settings' : 'Your fan identity'}
           >
             <SettingsIcon />
           </button>
@@ -311,24 +324,30 @@ export default function ChatRoomScreen() {
                   <span>new messages</span>
                 </div>
               )}
+              {message.type === 'poll' ? (
+                <PollCard roomId={roomId} message={message} participantId={participantId} disabled={isClosed} />
+              ) : (
               <MessageBubble
                 message={message}
                 isOwn={message.senderId === participantId}
                 showHeader={
-                  index === 0 || visibleMessages[index - 1].senderId !== message.senderId
+                  index === 0 ||
+                  visibleMessages[index - 1].senderId !== message.senderId ||
+                  visibleMessages[index - 1].badge?.id !== message.badge?.id
                 }
                 isHighlighted={highlightedId === message.id}
                 onReply={setReplyTo}
                 onReport={handleReport}
                 onJumpToReply={handleJumpToReply}
               />
+              )}
             </div>
           ))
         )}
         <TypingIndicator count={typingCount} />
       </div>
 
-      {isClosed && <div className="chat-room__closed-banner">🔒 this room is closed by its host</div>}
+      {isClosed && <div className="chat-room__closed-banner">🔒 this room is closed</div>}
 
       <Composer
         replyTo={replyTo}
@@ -336,6 +355,7 @@ export default function ChatRoomScreen() {
         onSend={handleSend}
         onTypingChange={handleTypingChange}
         disabled={isClosed}
+        onPoll={isFootball ? () => setPollOpen(true) : undefined}
       />
 
       {settingsOpen && room && (
@@ -346,8 +366,19 @@ export default function ChatRoomScreen() {
           onToggleStatus={() => setRoomStatus(roomId, isClosed ? 'open' : 'closed')}
           onDelete={() => setConfirmingDelete(true)}
           onClose={() => setSettingsOpen(false)}
-        />
+        >
+          {isFootball && (
+            <details className="settings-collapsible">
+              <summary>⚽ your fan identity</summary>
+              <IdentityPicker participantId={participantId} badge={badge} onChange={setBadge} />
+            </details>
+          )}
+        </ItemSettingsSheet>
       )}
+      {identityOpen && (
+        <IdentitySheet participantId={participantId} badge={badge} onChange={setBadge} onClose={() => setIdentityOpen(false)} />
+      )}
+      {pollOpen && <PollComposer roomId={roomId} onClose={() => setPollOpen(false)} />}
       {confirmingDelete && (
         <ConfirmDialog
           title="delete this room?"

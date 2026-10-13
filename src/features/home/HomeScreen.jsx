@@ -57,9 +57,9 @@ export default function HomeScreen() {
   // The create functions only take handle + themeColor; everything else
   // (photo, emoji, game/prompt) is an owner settings update right after —
   // same path the settings sheet uses, so no Cloud Function change.
-  async function handleCreateRoom({ handle, themeColor, bannerFile, open, emoji }) {
+  async function handleCreateRoom({ handle, themeColor, bannerFile, open, emoji, type }) {
     const roomId = await createRoomHandle(handle, themeColor)
-    const settings = { emoji }
+    const settings = { emoji, type: type || 'custom' }
     if (bannerFile) settings.bannerImageUrl = await uploadBanner('room', roomId, bannerFile)
     await updateRoomSettings(roomId, settings)
     // createRoom always makes rooms closed; "open the room now" flips it.

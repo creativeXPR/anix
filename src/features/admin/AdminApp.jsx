@@ -4,6 +4,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db, getFirebaseAuth } from '../../shared/firebase.js'
 import Spinner from '../../shared/components/Spinner.jsx'
 import { APP_VERSION } from '../../shared/version.js'
+import BadgesAdmin from './BadgesAdmin.jsx'
 import { ContactList, FeedbackList } from './InboxLists.jsx'
 import ModerationQueue from './ModerationQueue.jsx'
 import ReportsList from './ReportsList.jsx'
@@ -117,6 +118,7 @@ const TABS = [
   { key: 'reports', label: 'Reports', icon: '🚩', urgent: true },
   { key: 'feedback', label: 'Feedback', icon: '💬' },
   { key: 'contact', label: 'Contact', icon: '✉️' },
+  { key: 'badges', label: 'Badges', icon: '🏷️' },
 ]
 
 function initialTab() {
@@ -180,7 +182,7 @@ function AdminDashboard() {
             <button key={t.key} type="button" className={`admin-tile${t.urgent && counts[t.key] > 0 ? ' admin-tile--urgent' : ''}`} onClick={() => open(t.key)}>
               <span aria-hidden="true">{t.icon}</span>
               <b>{counts[t.key] ?? '…'}</b>
-              <small>{t.urgent ? `${t.label.toLowerCase()} to review` : t.label.toLowerCase()}</small>
+              <small>{t.urgent ? `${t.label.toLowerCase()} to review` : t.key === 'badges' ? 'badge requests' : t.label.toLowerCase()}</small>
             </button>
           ))}
         </div>
@@ -197,6 +199,9 @@ function AdminDashboard() {
       </div>
       <div role="tabpanel" hidden={tab !== 'contact'} className="admin-panel">
         <ContactList onCount={setCount.contact} />
+      </div>
+      <div role="tabpanel" hidden={tab !== 'badges'} className="admin-panel">
+        <BadgesAdmin onCount={setCount.badges} />
       </div>
     </div>
   )

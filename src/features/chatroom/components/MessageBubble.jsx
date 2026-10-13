@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import SendStatus from '../../../shared/components/SendStatus.jsx'
 import { useToast } from '../../../shared/toast-store.js'
+import BadgeChip from '../../football/BadgeChip.jsx'
+import { badgeNameColor } from '../../football/badges.js'
 import { colorForParticipant } from '../../../shared/utils/participant-color.js'
 import { hostnameFor, splitTextAndLinks } from '../linkify.js'
 import './MessageBubble.css'
@@ -46,8 +48,12 @@ export default function MessageBubble({
       id={`message-${message.id}`}
     >
       {showHeader && !isOwn && (
-        <span className="bubble-row__sender" style={{ color }}>
+        <span
+          className={`bubble-row__sender${message.badge ? ' has-badge' : ''}`}
+          style={message.badge ? { '--badge': badgeNameColor(message.badge) } : { color }}
+        >
           {displayName(message.senderId)}
+          {message.badge && <BadgeChip badge={message.badge} />}
         </span>
       )}
 

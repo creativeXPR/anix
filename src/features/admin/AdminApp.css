@@ -627,3 +627,89 @@
   font: 600 11px var(--font-body);
   vertical-align: middle;
 }
+
+/* Badges tab */
+.admin-card__actions button.primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.admin-badge-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.admin-badge-form b {
+  color: var(--text-h);
+}
+
+.admin-badge-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.admin-badge-form__colors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.admin-badge-form__colors input[type='color'] {
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+}
+
+.admin-subhead {
+  margin: 22px 0 10px;
+  font: 800 17px var(--font-display);
+  color: var(--text-h);
+}
+
+.admin-subhead small {
+  color: var(--text-muted);
+  font: 500 12px var(--font-body);
+}
+
+.admin-badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-badge-list__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+.admin-badge-list__item small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.admin-badge-list__item button {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .admin-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -138,7 +138,7 @@ export function canSendNow() {
   return Date.now() - lastSentAt >= MIN_SEND_INTERVAL_MS
 }
 
-export async function sendMessage({ roomId, senderId, text, replyTo, imageFile, onProgress = () => {} }) {
+export async function sendMessage({ roomId, senderId, text, replyTo, imageFile, badge = null, onProgress = () => {} }) {
   if (!canSendNow()) return
   lastSentAt = Date.now()
 
@@ -148,6 +148,8 @@ export async function sendMessage({ roomId, senderId, text, replyTo, imageFile, 
     text: text.trim(),
     senderId,
     imageUrl,
+    // football rooms: the sender's fan badge as it was when sent
+    ...(badge ? { badge } : {}),
     // Snapshot, not a live reference — survives the original being gone,
     // and anonymous ids only make sense for the life of this room anyway.
     // Includes imageUrl so a reply to an image-only message can still

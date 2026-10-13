@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import RoomTypePicker from '../../features/football/RoomTypePicker.jsx'
 import { DEFAULT_GAME, GAMES } from '../games.js'
 import { DEFAULT_ROOM_EMOJI } from '../room-defaults.js'
 import { THEME_PRESETS } from '../theme-presets.js'
@@ -26,6 +27,7 @@ export default function CreateLinkModal({ kind, onCreate, onClose }) {
   const [game, setGame] = useState(DEFAULT_GAME)
   const [customPrompt, setCustomPrompt] = useState('')
   const [emoji, setEmoji] = useState(DEFAULT_ROOM_EMOJI)
+  const [roomType, setRoomType] = useState('custom')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -53,6 +55,7 @@ export default function CreateLinkModal({ kind, onCreate, onClose }) {
         bannerFile,
         open: isRoom && openNow,
         emoji: isRoom ? emoji : undefined,
+        type: isRoom ? roomType : undefined,
         game: isRoom ? undefined : game,
         prompt: isRoom ? undefined : game === 'custom' ? customPrompt.trim() : GAMES[game].prompt,
       })
@@ -98,6 +101,18 @@ export default function CreateLinkModal({ kind, onCreate, onClose }) {
         maxLength={24}
         required
       />
+
+      {isRoom && (
+        <RoomTypePicker
+          value={roomType}
+          onChange={(next) => {
+            setRoomType(next)
+            // a football room starts with the ball unless you already picked an emoji
+            if (next === 'football' && emoji === DEFAULT_ROOM_EMOJI) setEmoji('⚽')
+            if (next === 'custom' && emoji === '⚽') setEmoji(DEFAULT_ROOM_EMOJI)
+          }}
+        />
+      )}
 
       {isRoom ? (
         <EmojiPicker value={emoji} onChange={setEmoji} />

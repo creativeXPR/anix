@@ -8,9 +8,12 @@ import './Composer.css'
 
 const TYPING_STOP_DELAY_MS = 2000
 
-export default function Composer({ replyTo, onCancelReply, onSend, onTypingChange, disabled }) {
+// `onPoll` (football rooms): the attach button becomes a "+" menu —
+// 📷 Photo / 📊 Poll.
+export default function Composer({ replyTo, onCancelReply, onSend, onTypingChange, disabled, onPoll }) {
   const [text, setText] = useState('')
   const [imageFile, setImageFile] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const typingTimeoutRef = useRef(null)
   const fileInputRef = useRef(null)
   const inputRef = useRef(null)
@@ -84,16 +87,40 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
         </div>
       )}
 
+      {menuOpen && onPoll && (
+        <div className="composer-menu pop-in">
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              fileInputRef.current?.click()
+            }}
+          >
+            📷 Photo
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              onPoll()
+            }}
+          >
+            📊 Poll
+          </button>
+        </div>
+      )}
+
       {/* NGL redesign: one floating pill — image button, text, round send. */}
       <div className="composer__row">
         <button
           type="button"
           className="icon-btn composer__attach"
-          onClick={() => fileInputRef.current?.click()}
-          aria-label="Attach image"
+          onClick={() => (onPoll ? setMenuOpen((open) => !open) : fileInputRef.current?.click())}
+          aria-label={onPoll ? 'Add photo or poll' : 'Attach image'}
+          aria-expanded={onPoll ? menuOpen : undefined}
           disabled={disabled}
         >
-          <ImageIcon />
+          {onPoll ? <span className="composer__plus" aria-hidden="true">{menuOpen ? '×' : '+'}</span> : <ImageIcon />}
         </button>
         <input
           ref={fileInputRef}

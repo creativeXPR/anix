@@ -43,6 +43,40 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    function pollOption(options, i) {
+      return options[i] is string && options[i].size() > 0 && options[i].size() <= 40;
+    }
+
+    function validPoll(data) {
+      return data.keys().hasOnly(['type', 'text', 'options', 'createdAt'])
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 120
+        && data.options is list && data.options.size() >= 2 && data.options.size() <= 4
+        && pollOption(data.options, 0) && pollOption(data.options, 1)
+        && (data.options.size() < 3 || pollOption(data.options, 2))
+        && (data.options.size() < 4 || pollOption(data.options, 3))
+        && data.createdAt == request.time;
+    }
+
+    // Football fan badges: built-in list in code + these, managed from
+    // /admin → Badges. Everyone reads; only the unlocked admin writes.
+    match /badges/{badgeId} {
+      allow read: if true;
+      allow write: if isUnlockedAdmin();
+    }
+
+    // "Can't find my club/country" — anyone can ask (shape checked); only
+    // /admin reads and clears them.
+    match /badgeRequests/{requestId} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'kind', 'where', 'details', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
+        && request.resource.data.kind in ['club', 'country']
+        && request.resource.data.where is string && request.resource.data.where.size() <= 60
+        && request.resource.data.details is string && request.resource.data.details.size() <= 300
+        && request.resource.data.createdAt == request.time;
+      allow read, delete: if isUnlockedAdmin();
+      allow update: if false;
+    }
+
     match /admin/gate {
       allow read, write: if false;
     }
@@ -88,9 +122,28 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if true;
-        allow create: if true;
+        // Ordinary messages (optionally carrying the sender's fan-badge
+        // snapshot), or a poll: `type: 'poll'`, question as `text`, 2–4
+        // `options`, and NO senderId — polls are never attributed
+        // (2026-10-13, football rooms).
+        allow create: if (!('type' in request.resource.data)
+            && (!('badge' in request.resource.data) || request.resource.data.badge == null
+              || (request.resource.data.badge is map && request.resource.data.badge.size() <= 4)))
+          || (request.resource.data.type == 'poll' && validPoll(request.resource.data));
         // No edit/delete — messages are anonymous and immutable (#002).
         allow update, delete: if false;
+
+        // One vote per anonymous guest (doc id = their per-room id),
+        // changeable; only on polls, only a real option index.
+        match /votes/{voterId} {
+          allow read: if true;
+          allow create, update: if request.resource.data.keys().hasOnly(['option', 'updatedAt'])
+            && request.resource.data.option is int
+            && request.resource.data.option >= 0
+            && request.resource.data.option < get(/databases/$(database)/documents/rooms/$(roomId)/messages/$(messageId)).data.options.size()
+            && request.resource.data.updatedAt == request.time;
+          allow delete: if false;
+        }
       }
 
       match /typing/{participantId} {

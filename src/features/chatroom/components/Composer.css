@@ -125,3 +125,8 @@
   width: 20px;
   height: 20px;
 }
+
+/* football rooms: the attach button is a "+" menu */
+.composer__plus {
+  font: 500 26px/1 var(--font-body);
+}
