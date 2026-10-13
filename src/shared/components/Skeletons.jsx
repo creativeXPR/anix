@@ -1,3 +1,4 @@
+import Page from './Page.jsx'
 import './Skeletons.css'
 
 // Loading placeholders (2026-10-13), each the same shape as the real thing
@@ -7,7 +8,7 @@ import './Skeletons.css'
 //   InboxSkeleton     → inbox filter chips + tilted message-tile grid
 //   ChatSkeleton      → bubbles (room: name label over others' bubbles;
 //                        private chat: "their message" card on top)
-//   PageSkeleton      → a whole signed-in page (brand, heading, cards)
+//   PageSkeleton      → the signed-in page being opened (Home/inbox/profile)
 // All use the shared `.skel` shimmer (Skeletons.css).
 
 export function LinkCardSkeleton({ kind = 'endpoint' }) {
@@ -97,20 +98,45 @@ export function ChatSkeleton({ variant = 'room' }) {
   )
 }
 
-export function PageSkeleton() {
+// Shown while the sign-in check resolves on a fresh load. Uses the real
+// Page frame (the same header — "inbox"/"profile" titles or Home's logo
+// never change) and shimmers only the content of the page being opened,
+// so /chats doesn't flash Home's layout first.
+export function PageSkeleton({ path = '/' }) {
+  if (path.startsWith('/chats')) {
+    return (
+      <Page title="inbox">
+        <span className="skel" style={{ width: 170, height: 13, marginTop: -6 }} aria-hidden="true" />
+        <InboxSkeleton />
+      </Page>
+    )
+  }
+  if (path.startsWith('/profile')) {
+    return (
+      <Page title="profile">
+        <div className="skel-profile" aria-busy="true" aria-label="Loading">
+          <span className="skel skel-profile__hero" />
+          <div className="skel-profile__stats">
+            <span className="skel skel-profile__stat" />
+            <span className="skel skel-profile__stat" />
+            <span className="skel skel-profile__stat" />
+          </div>
+          <span className="skel skel-profile__settings" />
+        </div>
+      </Page>
+    )
+  }
   return (
-    <div className="skel-page" aria-busy="true" aria-label="Loading">
-      <div className="skel-page__brand" aria-hidden="true">
-        <span className="skel skel--tile" style={{ width: 28, height: 28 }} />
-        <span className="skel" style={{ width: 52, height: 18 }} />
+    <Page title="anix" brand>
+      <div className="skel-page" aria-busy="true" aria-label="Loading">
+        <span className="skel" style={{ width: '62%', maxWidth: 300, height: 36 }} aria-hidden="true" />
+        <span className="skel" style={{ width: '45%', maxWidth: 200, height: 11 }} aria-hidden="true" />
+        <span className="skel skel-page__section" style={{ width: 110, height: 20 }} aria-hidden="true" />
+        <div className="home-grid">
+          <LinkCardSkeleton />
+          <LinkCardSkeleton />
+        </div>
       </div>
-      <span className="skel" style={{ width: '62%', maxWidth: 300, height: 36 }} aria-hidden="true" />
-      <span className="skel" style={{ width: '45%', maxWidth: 200, height: 11 }} aria-hidden="true" />
-      <span className="skel skel-page__section" style={{ width: 110, height: 20 }} aria-hidden="true" />
-      <div className="home-grid">
-        <LinkCardSkeleton />
-        <LinkCardSkeleton />
-      </div>
-    </div>
+    </Page>
   )
 }

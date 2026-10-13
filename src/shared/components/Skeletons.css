@@ -153,23 +153,38 @@
   padding: 22px 18px;
 }
 
-/* ---- whole page (auth still resolving) ---- */
+/* ---- whole page (auth still resolving), inside the real Page frame ---- */
 .skel-page {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 100%;
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 16px 16px 36px;
-  box-sizing: border-box;
 }
 
-.skel-page__brand {
+.skel-profile {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skel-profile__hero {
+  height: 116px;
+  border-radius: 30px;
+}
+
+.skel-profile__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.skel-profile__stat {
+  height: 74px;
+  border-radius: 22px;
+}
+
+.skel-profile__settings {
+  height: 330px;
+  border-radius: 24px;
 }
 
 .skel-page__section {

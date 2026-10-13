@@ -10,7 +10,7 @@ export default function RequireAuth({ children }) {
   const { user, loading } = useAuthUser()
   const location = useLocation()
 
-  if (loading) return <PageSkeleton />
+  if (loading) return <PageSkeleton path={location.pathname} />
   if (!user) return <Navigate to="/auth" state={{ from: location }} replace />
 
   return children
