@@ -1397,3 +1397,15 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   a throwaway vite config; `?loading=data|auth` to freeze loading states).
   Gotcha: run node/CDP scripts with `MSYS_NO_PATHCONV=1` in Git Bash or
   "/chats" args become "C:/Program Files/Git/chats".
+
+## Non-blocking Google Fonts (2026-10-13)
+- A render-blocking `<link rel="stylesheet">` to fonts.googleapis.com also
+  holds back the module script, so a slow/hung Google Fonts request left
+  the whole app blank (seen live: readyState stuck at "interactive", empty
+  #root). index.html now uses `rel="preload" as="style"` + onload swap
+  (+ `<noscript>` fallback): the app starts in the fallback font and
+  swaps to Bricolage/Poppins when they arrive (`display=swap`).
+- Verified with CDP `Fetch.enable` holding every fonts.googleapis.com
+  request forever: old live build → blank; new build → renders.
+- index.html head changed → functions/index-template.html regenerated →
+  deploy `functions:linkPreview` along with hosting.

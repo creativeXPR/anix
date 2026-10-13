@@ -23,10 +23,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Poppins:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Fonts load without blocking: a render-blocking stylesheet also
+         holds back the app's module script, so a slow/failed Google Fonts
+         request used to leave the whole app blank. Now the app starts in
+         the fallback font and swaps to Bricolage/Poppins when they land. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Poppins:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Poppins:wght@400;500;600;700;800&display=swap" /></noscript>
     <title>Anix — Anonymous Chat &amp; Messages</title>
     <meta name="description" content="Anonymous messages, games and chat rooms — share your link and find out what people really think." />
     <meta property="og:title" content="Anix — say it. anonymously." />
@@ -48,6 +50,6 @@
     <link rel="stylesheet" href="/boot.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>
