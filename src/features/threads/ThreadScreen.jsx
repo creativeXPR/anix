@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthUser } from '../../shared/auth-store.js'
+import { useOwnsDoc } from '../../shared/owned-docs.js'
 import { usePopOnNew } from '../../shared/hooks/use-pop-on-new.js'
 import Button from '../../shared/components/Button.jsx'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
@@ -57,7 +58,9 @@ export default function ThreadScreen() {
   useEffect(() => subscribeToThread(threadId, setThread, () => setThread(null)), [threadId])
   useEffect(() => (thread ? subscribeToThreadMessages(threadId, setMessages) : undefined), [threadId, thread])
 
-  const side = thread && user && thread.ownerId === user.uid ? 'owner' : 'sender'
+  // ownerHash check (owner privacy): the sender can't see who owns it
+  const owns = useOwnsDoc(user?.uid, threadId, thread)
+  const side = owns ? 'owner' : 'sender'
   // Pop when the other side sends something while this is open.
   const fromOtherSide = useCallback((message) => message.from !== side, [side])
   usePopOnNew(messages || [], { ready: messages !== null, isIncoming: fromOtherSide })

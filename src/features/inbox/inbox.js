@@ -10,10 +10,10 @@ import {
   doc,
   deleteDoc,
   updateDoc,
-  where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db } from '../../shared/firebase.js'
+import { subscribeToIndexedDocs } from '../../shared/owned-docs.js'
 import { functions, sendFunctions } from '../../shared/firebase-functions.js'
 
 const PAGE_SIZE = 50
@@ -32,11 +32,9 @@ export async function deleteEndpointHandle(endpointId) {
   await call({ id: endpointId })
 }
 
+// Your links: ids from the private owners/{uid} index (owner privacy).
 export function subscribeToOwnedEndpoints(uid, onChange) {
-  const ownedQuery = query(collection(db, 'messageEndpoints'), where('ownerId', '==', uid))
-  return onSnapshot(ownedQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnapshot) => ({ id: docSnapshot.id, ...docSnapshot.data() })))
-  })
+  return subscribeToIndexedDocs(`owners/${uid}`, 'endpoints', 'messageEndpoints', onChange)
 }
 
 export async function updateEndpointSettings(endpointId, updates) {

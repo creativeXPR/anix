@@ -4,7 +4,6 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -12,11 +11,11 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
   writeBatch,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db } from '../../shared/firebase.js'
+import { ownerHash, subscribeToIndexedDocs } from '../../shared/owned-docs.js'
 import { sendFunctions } from '../../shared/firebase-functions.js'
 
 // Anonymous two-way reply (phase 2, 2026-10-12).
@@ -118,11 +117,10 @@ export function subscribeToThreadMessages(threadId, onChange) {
 
 // Every thread the signed-in owner has opened. No orderBy (that would need
 // a composite index) — callers sort by lastActivityAt client-side.
+// Ids live in the owner's private users/{uid}.threads (threads no longer
+// carry a public ownerId — owner privacy, 2026-10-14).
 export function subscribeToOwnedThreads(uid, onChange) {
-  const ownedQuery = query(collection(db, 'threads'), where('ownerId', '==', uid))
-  return onSnapshot(ownedQuery, (snapshot) =>
-    onChange(snapshot.docs.map((docSnapshot) => ({ id: docSnapshot.id, ...docSnapshot.data() }))),
-  )
+  return subscribeToIndexedDocs(`users/${uid}`, 'threads', 'threads', onChange)
 }
 
 // Owner taps "reply privately": create the thread at the id the sender's
@@ -133,7 +131,7 @@ export async function openThread({ endpoint, message, ownerId }) {
   if (existing.exists()) return message.threadId
   const owner = await getDoc(doc(db, 'users', ownerId)).catch(() => null)
   await setDoc(ref, {
-    ownerId,
+    ownerHash: await ownerHash(ownerId, message.threadId),
     endpointId: endpoint.id,
     messageId: message.id,
     handle: endpoint.handle,
@@ -150,6 +148,7 @@ export async function openThread({ endpoint, message, ownerId }) {
     createdAt: serverTimestamp(),
     lastActivityAt: serverTimestamp(),
   })
+  await setDoc(doc(db, 'users', ownerId), { threads: arrayUnion(message.threadId) }, { merge: true })
   return message.threadId
 }
 
@@ -177,10 +176,10 @@ export async function reportThread(threadId, { messageId = null, text = '', reas
 // copied onto every thread they own (that's what both sides read).
 export async function setReadReceipts(uid, enabled) {
   await setDoc(doc(db, 'users', uid), { readReceipts: enabled }, { merge: true })
-  const owned = await getDocs(query(collection(db, 'threads'), where('ownerId', '==', uid)))
-  for (let i = 0; i < owned.docs.length; i += 400) {
+  const ids = (await getDoc(doc(db, 'users', uid))).data()?.threads || []
+  for (let i = 0; i < ids.length; i += 400) {
     const batch = writeBatch(db)
-    owned.docs.slice(i, i + 400).forEach((d) => batch.update(d.ref, { receipts: enabled }))
+    ids.slice(i, i + 400).forEach((id) => batch.update(threadRef(id), { receipts: enabled }))
     await batch.commit()
   }
 }

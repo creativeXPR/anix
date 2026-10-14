@@ -11,10 +11,10 @@ import {
   serverTimestamp,
   setDoc,
   startAfter,
-  where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db } from '../../shared/firebase.js'
+import { subscribeToIndexedDocs } from '../../shared/owned-docs.js'
 import { functions } from '../../shared/firebase-functions.js'
 import { uploadRoomImage } from './upload-image.js'
 
@@ -48,11 +48,10 @@ export async function deleteRoomHandle(roomId) {
   await call({ id: roomId })
 }
 
+// Your rooms: ids from the private owners/{uid} index (rooms no longer
+// carry a public ownerId — owner privacy, 2026-10-14).
 export function subscribeToOwnedRooms(uid, onChange) {
-  const ownedQuery = query(collection(db, 'rooms'), where('ownerId', '==', uid))
-  return onSnapshot(ownedQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnapshot) => ({ id: docSnapshot.id, ...docSnapshot.data() })))
-  })
+  return subscribeToIndexedDocs(`owners/${uid}`, 'rooms', 'rooms', onChange)
 }
 
 export async function updateRoomSettings(roomId, updates) {

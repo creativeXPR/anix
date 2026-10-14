@@ -12,7 +12,7 @@ export async function resolveSender({ where: place, parentId, message, messageId
     const thread = (await getDoc(doc(db, 'threads', parentId))).data()
     // reported/flagged by the anonymous side → the sender is the link
     // owner (an account), not a browser
-    if (!thread || by === 'sender' || message?.from === 'owner') return thread ? { kind: 'owner', ownerId: thread.ownerId, endpointId: thread.endpointId } : null
+    if (!thread || by === 'sender' || message?.from === 'owner') return thread ? { kind: 'owner', endpointId: thread.endpointId } : null
     return thread.senderKey ? { kind: 'link', endpointId: thread.endpointId, senderKey: thread.senderKey } : null
   }
   let senderKey = message?.senderKey

@@ -5,6 +5,7 @@ import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import FunEmpty from '../../shared/components/FunEmpty.jsx'
 import ItemSettingsSheet from '../../shared/components/ItemSettingsSheet.jsx'
 import { useAnonymousParticipant } from '../../shared/hooks/use-anonymous-participant.js'
+import { useOwnsDoc } from '../../shared/owned-docs.js'
 import { usePopOnNew } from '../../shared/hooks/use-pop-on-new.js'
 import BackIcon from '../../shared/icons/BackIcon.jsx'
 import SettingsIcon from '../../shared/icons/SettingsIcon.jsx'
@@ -204,7 +205,8 @@ export default function ChatRoomScreen() {
   const isClosed = room?.status === 'closed'
   // The owner (signed in, viewing their own room) gets the settings gear —
   // same sheet as Home's room card.
-  const isOwner = Boolean(user && room?.ownerId === user.uid)
+  // ownerHash check (owner privacy) — nothing public names the owner
+  const isOwner = useOwnsDoc(user?.uid, roomId, room) === true
   // Football rooms: everyone gets the gear — for the owner it opens room
   // settings (with their own fan identity folded inside), for everyone
   // else just their fan identity. Nothing visible to others differs.

@@ -74,7 +74,7 @@ export function ResolvedSender({ target }) {
 
   if (source === undefined) return <span className="admin-pattern">🧭 …</span>
   if (source?.kind === 'owner') {
-    return <span className="admin-pattern">👤 the link owner (account {source.ownerId.slice(0, 8)}…) — not anonymous</span>
+    return <span className="admin-pattern">👤 the link owner (of link {source.endpointId}) — not anonymous</span>
   }
   return <SenderPattern source={source} />
 }

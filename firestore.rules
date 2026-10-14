@@ -67,6 +67,17 @@ service cloud.firestore {
       return !(field in data) || data[field] == null || ownStorageUrl(data[field], folder);
     }
 
+    // Owner privacy: public docs carry ownerHash = base64(sha256(uid:docId))
+    // instead of the uid (see functions/index.js ownerHash) — the same
+    // person's rooms, link and private chats can't be matched up.
+    function ownerHashOf(id) {
+      return hashing.sha256(request.auth.uid + ':' + id).toBase64();
+    }
+
+    function ownsDoc(data, id) {
+      return request.auth != null && data.get('ownerHash', '') == ownerHashOf(id);
+    }
+
     function roomIsOpen(roomId) {
       return get(/databases/$(database)/documents/rooms/$(roomId)).data.get('status', 'open') != 'closed';
     }
@@ -159,14 +170,15 @@ service cloud.firestore {
 
     match /rooms/{roomId} {
       allow get: if true;
-      allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      // No listing: your own rooms come from owners/{uid} (private).
+      allow list: if false;
       // Creation goes through the createRoom Cloud Function (Admin SDK,
       // bypasses these rules) for the handle-uniqueness/3-cap checks —
       // no direct client create.
       allow create: if false;
       // Owner: room settings only (never ownerId/handle — those are set by
       // the createRoom function), and the photo must be our own upload.
-      allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid
+      allow update: if (ownsDoc(resource.data, roomId)
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['emoji', 'bannerImageUrl', 'themeColor', 'status', 'type', 'pinnedMatch', 'stickerPack', 'lastActivityAt'])
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['bannerImageUrl'])
@@ -242,19 +254,19 @@ service cloud.firestore {
 
     match /messageEndpoints/{endpointId} {
       function isEndpointOwner() {
-        return request.auth != null
-          && get(/databases/$(database)/documents/messageEndpoints/$(endpointId)).data.ownerId == request.auth.uid;
+        return ownsDoc(get(/databases/$(database)/documents/messageEndpoints/$(endpointId)).data, endpointId);
       }
 
       allow get: if true;
-      allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      // No listing: your own links come from owners/{uid} (private).
+      allow list: if false;
       allow create: if false;
       // Owner edits settings (photo, vibe, and since the NGL redesign the
       // prompt game: `game` + resolved `prompt` text, capped at 80 chars).
       // The admin dashboard may only extend the block list ("Block sender").
       allow update: if isUnlockedAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blocked']);
-      allow update: if request.auth != null && resource.data.ownerId == request.auth.uid
+      allow update: if ownsDoc(resource.data, endpointId)
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['bannerImageUrl', 'themeColor', 'game', 'prompt', 'blocked'])
         // senders load this photo on the link page — it must be our own
@@ -311,16 +323,18 @@ service cloud.firestore {
     match /threads/{threadId} {
 
       allow get: if true;
-      allow list: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      // No listing: the link owner keeps their thread ids in users/{uid}.
+      allow list: if false;
       allow create: if request.auth != null
-        && request.resource.data.ownerId == request.auth.uid
-        && get(/databases/$(database)/documents/messageEndpoints/$(request.resource.data.endpointId)).data.ownerId == request.auth.uid
+        && !('ownerId' in request.resource.data)
+        && request.resource.data.ownerHash == ownerHashOf(threadId)
+        && ownsDoc(get(/databases/$(database)/documents/messageEndpoints/$(request.resource.data.endpointId)).data, request.resource.data.endpointId)
         && get(/databases/$(database)/documents/messageEndpoints/$(request.resource.data.endpointId)/messages/$(request.resource.data.messageId)).data.threadId == threadId
         && request.resource.data.status == 'open';
       // Messages + their bookkeeping are written by the sendThreadMessage
       // Cloud Function (moderated). Clients only: the owner ends the thread
       // or marks their side seen; the sender marks their side seen.
-      allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid
+      allow update: if (ownsDoc(resource.data, threadId)
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'ownerUnread', 'lastActivityAt', 'receipts'])
           && request.resource.data.status in ['open', 'ended']
@@ -367,6 +381,18 @@ service cloud.firestore {
       match /stickers/{stickerId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
+    }
+
+    // Your own rooms/links (ids) — written only by the create/delete
+    // functions; readable only by you. The uid ↔ doc mapping itself
+    // (ownership/*) is functions-only.
+    match /owners/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /ownership/{docId} {
+      allow read, write: if false;
     }
 
     // /welcome/contact form — anyone can send (no account needed), shape

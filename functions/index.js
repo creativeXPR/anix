@@ -1,3 +1,4 @@
+const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
@@ -40,6 +41,32 @@ function generateCode() {
   return code
 }
 
+// --- Owner privacy (2026-10-14 security audit) ---
+//
+// Public docs (rooms, messageEndpoints, threads) no longer carry the
+// owner's uid — anyone could read it and match a room to the person behind
+// a public link (or a private chat), breaking room-owner anonymity. They
+// carry `ownerHash` = base64url-with-padding(sha256(uid + ':' + docId)): different
+// for every doc (so docs can't be linked to each other), and rules check
+// ownership with `hashing.sha256(request.auth.uid + ':' + id).toBase64()`.
+// The real owner lives where no client can read it:
+//   ownership/{collection}_{id}  { ownerId }         — functions only
+//   owners/{uid}                 { rooms[], endpoints[] } — that user only
+// (threads: the link owner keeps users/{uid}.threads themselves.)
+// Rules' Bytes.toBase64() is the URL-safe alphabet (-_) with = padding.
+function ownerHash(uid, id) {
+  return crypto.createHash('sha256').update(`${uid}:${id}`).digest('base64').replace(/\+/g, '-').replace(/\//g, '_')
+}
+
+const OWNED_FIELD = { rooms: 'rooms', messageEndpoints: 'endpoints' }
+const ownershipRef = (collectionName, id) => db.doc(`ownership/${collectionName}_${id}`)
+
+// The uid behind a room / link (falls back to a not-yet-migrated ownerId).
+async function ownerOf(collectionName, id, data) {
+  const snap = await ownershipRef(collectionName, id).get()
+  return snap.data()?.ownerId || data?.ownerId || null
+}
+
 // --- Create/delete ---
 //
 // The doc id (and the actual URL id, /r/:code or /m/:code) is a random
@@ -75,13 +102,14 @@ async function createHandleDoc(collectionName, ownerId, { handle, themeColor }) 
           throw new HttpsError('already-exists', 'code collision, retry')
         }
 
-        const owned = await tx.get(db.collection(collectionName).where('ownerId', '==', ownerId))
-        if (owned.size >= MAX_PER_TYPE) {
+        const ownersRef = db.doc(`owners/${ownerId}`)
+        const owned = (await tx.get(ownersRef)).data()?.[OWNED_FIELD[collectionName]] || []
+        if (owned.length >= MAX_PER_TYPE) {
           throw new HttpsError('resource-exhausted', `You can only have ${MAX_PER_TYPE} of these.`)
         }
 
         const data = {
-          ownerId,
+          ownerHash: ownerHash(ownerId, code),
           handle: normalizedHandle,
           themeColor: themeColor || null,
           bannerImageUrl: null,
@@ -93,6 +121,8 @@ async function createHandleDoc(collectionName, ownerId, { handle, themeColor }) 
         }
 
         tx.set(docRef, data)
+        tx.set(ownershipRef(collectionName, code), { ownerId, createdAt: FieldValue.serverTimestamp() })
+        tx.set(ownersRef, { [OWNED_FIELD[collectionName]]: FieldValue.arrayUnion(code) }, { merge: true })
       })
 
       return { id: code, handle: normalizedHandle }
@@ -106,11 +136,13 @@ async function createHandleDoc(collectionName, ownerId, { handle, themeColor }) 
   }
 }
 
+// `ownerId` null = a system delete (inactive-room cleanup), no owner check.
 async function deleteHandleDoc(collectionName, ownerId, id, subcollections) {
   const docRef = db.collection(collectionName).doc(id)
   const snapshot = await docRef.get()
   if (!snapshot.exists) return
-  if (snapshot.data().ownerId !== ownerId) {
+  const realOwner = await ownerOf(collectionName, id, snapshot.data())
+  if (ownerId !== null && realOwner !== ownerId) {
     throw new HttpsError('permission-denied', "That's not yours to delete.")
   }
 
@@ -130,6 +162,10 @@ async function deleteHandleDoc(collectionName, ownerId, id, subcollections) {
   }
 
   await docRef.delete()
+  await ownershipRef(collectionName, id).delete()
+  if (realOwner) {
+    await db.doc(`owners/${realOwner}`).set({ [OWNED_FIELD[collectionName]]: FieldValue.arrayRemove(id) }, { merge: true })
+  }
 }
 
 exports.createRoom = onCall(async (request) => {
@@ -157,11 +193,10 @@ exports.deleteMessageEndpoint = onCall(async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.')
   await deleteHandleDoc('messageEndpoints', request.auth.uid, request.data.id, ['messages'])
   // Phase 2: the link's private conversations (+ their push tokens) go too.
-  const threads = await db
-    .collection('threads')
-    .where('ownerId', '==', request.auth.uid)
-    .where('endpointId', '==', request.data.id)
-    .get()
+  const threads = await db.collection('threads').where('endpointId', '==', request.data.id).get()
+  if (!threads.empty) {
+    await db.doc(`users/${request.auth.uid}`).set({ threads: FieldValue.arrayRemove(...threads.docs.map((t) => t.id)) }, { merge: true })
+  }
   for (const thread of threads.docs) {
     const messages = await thread.ref.collection('messages').get()
     const batch = db.batch()
@@ -272,7 +307,7 @@ exports.sendThreadMessage = onCall({ region: SEND_REGIONS }, async (request) => 
   const thread = (await threadRef.get()).data()
   if (!thread) throw new HttpsError('not-found', 'This conversation no longer exists.')
   if (thread.status !== 'open') throw new HttpsError('failed-precondition', 'This conversation has ended.')
-  const from = request.auth?.uid === thread.ownerId ? 'owner' : 'sender'
+  const from = request.auth && (thread.ownerHash ? ownerHash(request.auth.uid, threadId) === thread.ownerHash : request.auth.uid === thread.ownerId) ? 'owner' : 'sender'
   if (from === 'sender' && thread.senderKey) {
     const endpoint = (await db.doc(`messageEndpoints/${thread.endpointId}`).get()).data()
     if ((endpoint?.blocked || []).includes(thread.senderKey)) {
@@ -321,10 +356,11 @@ exports.onEndpointMessage = onAnixDocCreated(
   async (event) => {
     if (event.data?.data()?.filtered) return // moderation hid it — don't announce it
     const endpoint = (await db.doc(`messageEndpoints/${event.params.endpointId}`).get()).data()
-    if (!endpoint?.ownerId) return
+    const endpointOwner = endpoint && (await ownerOf('messageEndpoints', event.params.endpointId, endpoint))
+    if (!endpointOwner) return
     // Messages snapshot the prompt they answered (NGL redesign games).
     const prompt = event.data?.data()?.prompt
-    await sendToOwner(endpoint.ownerId, {
+    await sendToOwner(endpointOwner, {
       title: 'New anonymous message 💌',
       body: prompt
         ? `Someone answered "${prompt}" on ${endpoint.handle}.`
@@ -337,8 +373,9 @@ exports.onRoomMessage = onAnixDocCreated('rooms/{roomId}/messages/{messageId}', 
   // match announcements (football rooms) aren't activity worth a push
   if (event.data?.data()?.type === 'event') return
   const room = (await db.doc(`rooms/${event.params.roomId}`).get()).data()
-  if (!room?.ownerId) return
-  await sendToOwner(room.ownerId, {
+  const roomOwner = room && (await ownerOf('rooms', event.params.roomId, room))
+  if (!roomOwner) return
+  await sendToOwner(roomOwner, {
     title: 'New activity in your room',
     body: `New message in ${room.handle}.`,
   })
@@ -346,8 +383,9 @@ exports.onRoomMessage = onAnixDocCreated('rooms/{roomId}/messages/{messageId}', 
 
 exports.onRoomReport = onAnixDocCreated('rooms/{roomId}/reports/{reportId}', async (event) => {
   const room = (await db.doc(`rooms/${event.params.roomId}`).get()).data()
-  if (!room?.ownerId) return
-  await sendToOwner(room.ownerId, {
+  const roomOwner = room && (await ownerOf('rooms', event.params.roomId, room))
+  if (!roomOwner) return
+  await sendToOwner(roomOwner, {
     title: 'A message was reported',
     body: `Someone flagged a message in ${room.handle}.`,
   })
@@ -364,7 +402,7 @@ exports.onThreadMessage = onAnixDocCreated('threads/{threadId}/messages/{message
 
   if (message.from === 'sender') {
     await sendToOwner(
-      thread.ownerId,
+      thread.ownerId || (await ownerOf('messageEndpoints', thread.endpointId)),
       { title: 'New private reply 💬', body: `Someone replied to you on ${thread.handle}.` },
       `/t/${threadId}`,
     )
@@ -424,7 +462,7 @@ exports.expireInactiveRooms = onSchedule('every 24 hours', async () => {
     .get()
 
   await Promise.all(
-    snapshot.docs.map((doc) => deleteHandleDoc('rooms', doc.data().ownerId, doc.id, [
+    snapshot.docs.map((doc) => deleteHandleDoc('rooms', null, doc.id, [
       'messages',
       'typing',
       'presence',

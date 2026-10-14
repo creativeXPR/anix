@@ -1533,3 +1533,25 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   Also inherent to guest (no-auth) rooms: votes can be stuffed and
   senderIds spoofed by clearing storage / scripting; admin passcode can be
   brute-forced (keep it long); anyone can upload room images/stickers.
+
+## Owner privacy: no public ownerId (2026-10-14)
+- Public docs (`rooms`, `messageEndpoints`, `threads`) carry
+  `ownerHash` = sha256(`${uid}:${docId}`) in **URL-safe base64 with =
+  padding** (that's what rules' `Bytes.toBase64()` returns — standard
+  base64 never matched) instead of `ownerId`. Different per doc, so one
+  person's rooms / link / private chats can't be matched up. Computed in
+  functions/index.js `ownerHash`, src/shared/owned-docs.js `ownerHash`,
+  and rules `ownerHashOf(id)` / `ownsDoc(data, id)`.
+- Private indexes: `owners/{uid}` {rooms[], endpoints[]} (written only by
+  create/delete functions, read only by that user — also the 3-cap
+  count); `ownership/{collection}_{id}` {ownerId} (functions only — push
+  notifications, delete checks, inactive-room cleanup); the link owner's
+  thread ids in `users/{uid}.threads` (written by openThread).
+- Client: `subscribeToIndexedDocs` replaces the `where('ownerId')`
+  queries (rooms/links/threads lists); `useOwnsDoc` decides owner UI
+  (ChatRoomScreen gear, ThreadScreen side). Rules: no `list` on rooms,
+  messageEndpoints or threads.
+- Existing data converted by the one-time `migrateOwnership` HTTP function
+  (secret MIGRATION_TOKEN), removed after it ran.
+- Rules test suite (emulator, 66 cases incl. 15 owner-privacy) lives only
+  in the session scratchpad; re-create from this description if needed.
