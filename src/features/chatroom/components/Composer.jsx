@@ -10,7 +10,9 @@ const TYPING_STOP_DELAY_MS = 2000
 
 // `onPoll` (football rooms): the attach button becomes a "+" menu —
 // 📷 Photo / 📊 Poll.
-export default function Composer({ replyTo, onCancelReply, onSend, onTypingChange, disabled, onPoll }) {
+// `stickers` (rooms): the sticker tray shown in the emoji panel's
+// Stickers tab.
+export default function Composer({ replyTo, onCancelReply, onSend, onTypingChange, disabled, onPoll, stickers }) {
   const [text, setText] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -152,7 +154,7 @@ export default function Composer({ replyTo, onCancelReply, onSend, onTypingChang
           <ArrowRightIcon />
         </button>
       </div>
-      <EmojiPanelSlot open={emoji.open && !disabled} onPick={emoji.insert} onBackspace={emoji.backspace} />
+      <EmojiPanelSlot open={emoji.open && !disabled} onPick={emoji.insert} onBackspace={emoji.backspace} stickers={stickers} />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import RoomTypePicker from '../../features/football/RoomTypePicker.jsx'
+import { PACKS } from '../../features/stickers/packs.js'
 import { CUSTOM_PROMPT_MAX, DEFAULT_GAME, GAMES } from '../games.js'
 import { DEFAULT_ROOM_EMOJI } from '../room-defaults.js'
 import { THEME_PRESETS } from '../theme-presets.js'
@@ -77,6 +78,29 @@ export default function ItemSettingsSheet({ item, kind, onUpdateSettings, onTogg
       <h2>{isRoom ? 'room settings' : 'link settings'}</h2>
 
       {isRoom && <RoomTypePicker value={item.type || 'custom'} onChange={(type) => onUpdateSettings({ type })} />}
+
+      {isRoom && (
+        <div>
+          <p className="section-label">
+            stickers <small>pack shown first</small>
+          </p>
+          <div className="chip-row" role="radiogroup" aria-label="Sticker pack shown first">
+            {[['auto', '✨ Auto (room type)'], ...Object.entries(PACKS).map(([key, pack]) => [key, pack.label])].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className="chip"
+                role="radio"
+                aria-checked={(item.stickerPack || 'auto') === key}
+                aria-selected={(item.stickerPack || 'auto') === key}
+                onClick={() => onUpdateSettings({ stickerPack: key === 'auto' ? null : key })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isRoom ? (
         <EmojiPicker value={item.emoji || DEFAULT_ROOM_EMOJI} onChange={(emoji) => onUpdateSettings({ emoji })} />

@@ -1474,3 +1474,28 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   messages (rules allow only plain or poll). onRoomMessage skips `event`
   messages (no owner push for goals).
 - Rules: `footballMatches` read-only for clients.
+
+## Rooms — stage 3: stickers (2026-10-14)
+- **All rooms** (not private chats yet). The room's emoji panel gets an
+  Emoji | Stickers switch (EmojiPanel `stickers` prop, last mode
+  remembered); StickerTray tabs: room pack first, other pack, ⭐ Mine.
+- **Built-in packs** (features/stickers/packs.js: football, general) are
+  drawn in code by StickerArt (emoji + coloured caption with thick white
+  outline, white drop-shadow outline) and send as `sticker: {pack, id}`.
+  Pack shown first = `roomPack(room)`: owner's `rooms/{id}.stickerPack`
+  (room settings "stickers · pack shown first": auto/football/general),
+  else by room type.
+- **Sticker maker** (StickerMaker.jsx): any photo → drag/zoom → optional
+  caption → 512² rounded sticker, white outline, transparent corners,
+  WebP (~20 KB; PNG fallback) → Storage `anix/stickers/{uid|guestKey}/…`
+  (storage.rules: anyone may create, <300 KB, webp/png, no overwrite) →
+  sent as `sticker: {url}`. Firestore rules (`validSticker`) only accept
+  URLs in this project's `anix/stickers/` Storage path.
+- **My stickers**: signed in → `users/{uid}/stickers/{id}` (owner-only
+  rules); guest → localStorage `anix:stickers`. `useGuestStickerMigration`
+  (App.jsx) moves guest stickers into the account on sign-in. "Save
+  sticker" in a sticker message's actions; removing asks ConfirmDialog.
+- Sticker messages render without a bubble (`.bubble--sticker`); replies
+  to them show "Sticker" + thumbnail. Reports carry `stickerUrl`, shown in
+  /admin Reports (Delete message removes it from the room).
+- Owner anonymity unchanged: sticker messages look the same for everyone.

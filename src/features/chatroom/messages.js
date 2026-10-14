@@ -138,7 +138,7 @@ export function canSendNow() {
   return Date.now() - lastSentAt >= MIN_SEND_INTERVAL_MS
 }
 
-export async function sendMessage({ roomId, senderId, text, replyTo, imageFile, badge = null, onProgress = () => {} }) {
+export async function sendMessage({ roomId, senderId, text, replyTo, imageFile, badge = null, sticker = null, onProgress = () => {} }) {
   if (!canSendNow()) return
   lastSentAt = Date.now()
 
@@ -150,12 +150,19 @@ export async function sendMessage({ roomId, senderId, text, replyTo, imageFile, 
     imageUrl,
     // football rooms: the sender's fan badge as it was when sent
     ...(badge ? { badge } : {}),
+    // a sticker message: { url } (made/uploaded) or { pack, id } (built in)
+    ...(sticker ? { sticker } : {}),
     // Snapshot, not a live reference — survives the original being gone,
     // and anonymous ids only make sense for the life of this room anyway.
     // Includes imageUrl so a reply to an image-only message can still
     // show a thumbnail of what's being replied to, not just blank text.
     replyTo: replyTo
-      ? { id: replyTo.id, text: replyTo.text, senderId: replyTo.senderId, imageUrl: replyTo.imageUrl || null }
+      ? {
+          id: replyTo.id,
+          text: replyTo.text || (replyTo.sticker ? 'Sticker' : ''),
+          senderId: replyTo.senderId,
+          imageUrl: replyTo.imageUrl || replyTo.sticker?.url || null,
+        }
       : null,
     createdAt: serverTimestamp(),
   })
@@ -172,7 +179,9 @@ export async function sendMessage({ roomId, senderId, text, replyTo, imageFile, 
 export async function reportMessage(roomId, message, reporterId) {
   await addDoc(collection(db, 'rooms', roomId, 'reports'), {
     messageId: message.id,
-    text: String(message.text || (message.imageUrl ? '[image]' : '')).slice(0, 1000),
+    text: String(message.text || (message.imageUrl ? '[image]' : message.sticker ? '[sticker]' : '')).slice(0, 1000),
+    // an uploaded sticker is shown to /admin so it can judge it
+    stickerUrl: message.sticker?.url || null,
     senderId: message.senderId || null,
     reporterId,
     createdAt: serverTimestamp(),

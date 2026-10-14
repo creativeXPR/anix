@@ -110,6 +110,7 @@ export default function ReportsList({ onCount }) {
                 <span>{formatTimestamp(item.createdAt)}</span>
               </div>
               <p className="admin-card__text">{item.text || `(no copy of the text — message ${item.messageId})`}</p>
+              {item.stickerUrl && <img className="admin-sticker" src={item.stickerUrl} alt="reported sticker" />}
               <ResolvedSender
                 target={{ where: item.where, parentId: item.parentId, messageId: item.messageId, by: item.by, message: item.senderId ? { senderId: item.senderId } : null }}
               />

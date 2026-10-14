@@ -22,6 +22,8 @@ import MatchCard from '../football/MatchCard.jsx'
 import MatchPicker from '../football/MatchPicker.jsx'
 import PollCard from '../football/PollCard.jsx'
 import PollComposer from '../football/PollComposer.jsx'
+import { useMyStickers } from '../stickers/my-stickers.js'
+import StickerTray from '../stickers/StickerTray.jsx'
 import {
   canSendNow,
   deleteRoomHandle,
@@ -73,6 +75,7 @@ export default function ChatRoomScreen() {
   const [identityOpen, setIdentityOpen] = useState(false)
   const [pollOpen, setPollOpen] = useState(false)
   const [badge, setBadge] = useRoomBadge(roomId)
+  const myStickers = useMyStickers()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const scrollRef = useRef(null)
@@ -105,7 +108,9 @@ export default function ChatRoomScreen() {
           (pendingMessage) =>
             !nextMessages.some(
               (real) =>
-                real.senderId === pendingMessage.senderId && real.text === pendingMessage.text,
+                real.senderId === pendingMessage.senderId &&
+                real.text === pendingMessage.text &&
+                JSON.stringify(real.sticker || null) === JSON.stringify(pendingMessage.sticker || null),
             ),
         ),
       )
@@ -216,8 +221,17 @@ export default function ChatRoomScreen() {
     }
   }
 
-  async function handleSend({ text, imageFile }) {
-    if ((!text && !imageFile) || isClosed || !canSendNow()) return
+  async function handleSaveSticker(sticker) {
+    try {
+      const added = await myStickers.add(sticker)
+      showToast(added ? 'Added to your stickers ⭐' : 'Already in your stickers', 'success')
+    } catch (err) {
+      showToast(err.message, 'error')
+    }
+  }
+
+  async function handleSend({ text, imageFile, sticker }) {
+    if ((!text && !imageFile && !sticker) || isClosed || !canSendNow()) return
 
     const activeReplyTo = replyTo
     setReplyTo(null)
@@ -232,8 +246,9 @@ export default function ChatRoomScreen() {
       ...current,
       {
         id: tempId,
-        text: text.trim(),
+        text: (text || '').trim(),
         imageUrl: localImageUrl,
+        sticker: sticker || null,
         senderId: participantId,
         badge: isFootball ? badge : null,
         replyTo: activeReplyTo
@@ -251,9 +266,10 @@ export default function ChatRoomScreen() {
       await sendMessage({
         roomId,
         senderId: participantId,
-        text,
+        text: text || '',
         replyTo: activeReplyTo,
         imageFile,
+        sticker,
         badge: isFootball ? badge : null,
         onProgress: (progress) =>
           setPendingMessages((current) => current.map((m) => (m.id === tempId ? { ...m, progress } : m))),
@@ -347,6 +363,7 @@ export default function ChatRoomScreen() {
                 onReply={setReplyTo}
                 onReport={handleReport}
                 onJumpToReply={handleJumpToReply}
+                onSaveSticker={handleSaveSticker}
               />
               )}
             </div>
@@ -364,6 +381,7 @@ export default function ChatRoomScreen() {
         onTypingChange={handleTypingChange}
         disabled={isClosed}
         onPoll={isFootball ? () => setPollOpen(true) : undefined}
+        stickers={room ? <StickerTray room={room} onSend={(sticker) => handleSend({ sticker })} /> : null}
       />
 
       {settingsOpen && room && (

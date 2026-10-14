@@ -1,3 +1,4 @@
+import { useGuestStickerMigration } from './features/stickers/use-sticker-migration.js'
 import { Outlet, Route, Routes } from 'react-router-dom'
 import AdminApp from './features/admin/AdminApp.jsx'
 import AnonymousMessageScreen from './features/anonymous-messages/AnonymousMessageScreen.jsx'
@@ -30,6 +31,7 @@ function AppShellLayout() {
 }
 
 function App() {
+  useGuestStickerMigration()
   return (
     <>
       <Routes>

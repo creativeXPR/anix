@@ -23,7 +23,26 @@ function saveRecent(list) {
   }
 }
 
-export default function EmojiPanel({ onPick, onBackspace }) {
+// `stickers` (rooms): a node for the Stickers side — adds an Emoji |
+// Stickers switch on top (last choice remembered).
+const MODE_KEY = 'anix:emoji-panel-mode'
+
+export default function EmojiPanel({ onPick, onBackspace, stickers }) {
+  const [mode, setModeState] = useState(() => {
+    try {
+      return stickers && localStorage.getItem(MODE_KEY) === 'stickers' ? 'stickers' : 'emoji'
+    } catch {
+      return 'emoji'
+    }
+  })
+  const setMode = (next) => {
+    setModeState(next)
+    try {
+      localStorage.setItem(MODE_KEY, next)
+    } catch {
+      // not remembered — fine
+    }
+  }
   const [recent, setRecent] = useState(loadRecent)
   const [search, setSearch] = useState('')
   const [active, setActive] = useState(recent.length ? 'recent' : 'smileys')
@@ -105,8 +124,29 @@ export default function EmojiPanel({ onPick, onBackspace }) {
     </div>
   )
 
+  const modes = stickers && (
+    <div className="emoji-panel__modes" role="tablist" aria-label="Emoji or stickers">
+      <button type="button" role="tab" aria-selected={mode === 'emoji'} onClick={() => setMode('emoji')} onMouseDown={(e) => e.preventDefault()}>
+        😀 Emoji
+      </button>
+      <button type="button" role="tab" aria-selected={mode === 'stickers'} onClick={() => setMode('stickers')} onMouseDown={(e) => e.preventDefault()}>
+        🙂 Stickers
+      </button>
+    </div>
+  )
+
+  if (stickers && mode === 'stickers') {
+    return (
+      <div className="emoji-panel pop-in" role="dialog" aria-label="Stickers">
+        {modes}
+        {stickers}
+      </div>
+    )
+  }
+
   return (
     <div className="emoji-panel pop-in" role="dialog" aria-label="Emojis">
+      {modes}
       <div className="emoji-panel__top">
         <input
           className="emoji-panel__search"

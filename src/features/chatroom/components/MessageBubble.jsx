@@ -2,6 +2,7 @@ import { useState } from 'react'
 import SendStatus from '../../../shared/components/SendStatus.jsx'
 import { useToast } from '../../../shared/toast-store.js'
 import BadgeChip from '../../football/BadgeChip.jsx'
+import StickerArt from '../../stickers/StickerArt.jsx'
 import { badgeNameColor } from '../../football/badges.js'
 import { colorForParticipant } from '../../../shared/utils/participant-color.js'
 import { hostnameFor, splitTextAndLinks } from '../linkify.js'
@@ -19,6 +20,7 @@ export default function MessageBubble({
   onReply,
   onReport,
   onJumpToReply,
+  onSaveSticker,
 }) {
   const showToast = useToast()
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -72,6 +74,17 @@ export default function MessageBubble({
             >
               Reply
             </button>
+            {message.sticker && onSaveSticker && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSaveSticker(message.sticker)
+                  setActionsOpen(false)
+                }}
+              >
+                Save sticker
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -86,7 +99,7 @@ export default function MessageBubble({
 
         <button
           type="button"
-          className={`bubble${isOwn ? ' bubble--own' : ' bubble--other'}`}
+          className={`bubble${isOwn ? ' bubble--own' : ' bubble--other'}${message.sticker ? ' bubble--sticker' : ''}`}
           onClick={() => !pending && setActionsOpen((open) => !open)}
           disabled={pending}
         >
@@ -113,6 +126,8 @@ export default function MessageBubble({
             <img className="bubble__image" src={message.imageUrl} alt="" />
           )}
 
+          {message.sticker && <StickerArt sticker={message.sticker} size={128} />}
+
           {message.text && (
             <p className="bubble__text">
               {splitTextAndLinks(message.text).map((segment, index) =>
@@ -134,7 +149,7 @@ export default function MessageBubble({
               {isOwn && <SendStatus state={pending ? 'sending' : 'sent'} progress={message.progress} />}
             </p>
           )}
-          {isOwn && !message.text && (
+          {isOwn && !message.text && !message.sticker && (
             <span className="bubble__meta">
               <SendStatus state={pending ? 'sending' : 'sent'} progress={message.progress} />
             </span>

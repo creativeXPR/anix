@@ -32,11 +32,11 @@ export function EmojiToggle({ open, onToggle, className = '', disabled }) {
   )
 }
 
-export function EmojiPanelSlot({ open, onPick, onBackspace }) {
+export function EmojiPanelSlot({ open, onPick, onBackspace, stickers }) {
   if (!open) return null
   return (
     <Suspense fallback={<div className="emoji-panel emoji-panel--loading" />}>
-      <EmojiPanel onPick={onPick} onBackspace={onBackspace} />
+      <EmojiPanel onPick={onPick} onBackspace={onBackspace} stickers={stickers} />
     </Suspense>
   )
 }

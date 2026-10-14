@@ -16,6 +16,16 @@ service firebase.storage {
       allow delete: if false;
     }
 
+    // Room stickers (made in the sticker maker): anyone in a room can
+    // make one — guests included — so no auth; small images only, never
+    // overwritten. Folder = account uid or a per-browser guest key.
+    match /anix/stickers/{owner}/{fileName} {
+      allow read: if true;
+      allow create: if request.resource.size < 300 * 1024
+                    && request.resource.contentType.matches('image/(webp|png)');
+      allow update, delete: if false;
+    }
+
     match /anix/rooms/{roomId}/banner/{fileName} {
       allow read: if true;
       allow write: if request.auth != null

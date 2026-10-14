@@ -29,3 +29,9 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

@@ -713,3 +713,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.admin-sticker {
+  display: block;
+  width: 120px;
+  height: 120px;
+  margin-top: 8px;
+  object-fit: contain;
+  border-radius: 16px;
+  background: var(--panel-alt);
+}
