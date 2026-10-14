@@ -3,16 +3,20 @@ import { useEffect, useState } from 'react'
 import { AuthContext } from './auth-store.js'
 import { getFirebaseAuth } from './firebase.js'
 
+// `user` is a real account only — an anonymous session (room guests get
+// one silently; /admin uses one) never counts as "signed in" for Home,
+// inbox, profile etc. `anyUser` includes it, for rooms (2026-10-14).
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [anyUser, setAnyUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     return onAuthStateChanged(getFirebaseAuth(), (nextUser) => {
-      setUser(nextUser)
+      setAnyUser(nextUser)
       setLoading(false)
     })
   }, [])
 
-  return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>
+  const user = anyUser && !anyUser.isAnonymous ? anyUser : null
+  return <AuthContext.Provider value={{ user, anyUser, loading }}>{children}</AuthContext.Provider>
 }

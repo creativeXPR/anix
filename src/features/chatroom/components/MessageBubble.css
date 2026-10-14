@@ -193,3 +193,13 @@
     animation: none;
   }
 }
+
+/* a room message the filter hid */
+.bubble--filtered {
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+  cursor: default;
+}

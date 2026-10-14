@@ -263,8 +263,8 @@ function cleanText(text) {
 // The send callables run next to the `anix` database (europe-west1) so a
 // send isn't several transatlantic round-trips. TRANSITION: also still in
 // us-central1 so already-open old clients keep working until they
-// refresh — drop 'us-central1' from SEND_REGIONS after this deploy lands.
-const SEND_REGIONS = ['europe-west1', 'us-central1']
+// refresh. us-central1 retired 2026-10-14 (every client calls europe-west1).
+const SEND_REGIONS = ['europe-west1']
 
 // Anonymous message to a link. No account needed (that's the feature).
 exports.sendAnonymousMessage = onCall({ region: SEND_REGIONS }, async (request) => {
@@ -369,9 +369,29 @@ exports.onEndpointMessage = onAnixDocCreated(
   },
 )
 
+// Room moderation is a switch in /admin (config/moderation.rooms), OFF by
+// default. On: each new room message / poll question goes through the
+// same filter as link messages; flagged ones get `filtered` and are
+// hidden in the room + listed in /admin → Moderation. Read at most once a
+// minute per instance.
+let moderationConfig = { at: 0, rooms: false }
+async function roomModerationOn() {
+  if (Date.now() - moderationConfig.at > 60_000) {
+    const snap = await db.doc('config/moderation').get().catch(() => null)
+    moderationConfig = { at: Date.now(), rooms: snap?.data()?.rooms === true }
+  }
+  return moderationConfig.rooms
+}
+
 exports.onRoomMessage = onAnixDocCreated('rooms/{roomId}/messages/{messageId}', async (event) => {
+  const data = event.data?.data()
   // match announcements (football rooms) aren't activity worth a push
-  if (event.data?.data()?.type === 'event') return
+  if (!data || data.type === 'event') return
+  if (data.text && (await roomModerationOn())) {
+    const verdict = await moderate(data.text)
+    if (verdict.filtered || verdict.moderation?.unchecked) await event.data.ref.update(verdict)
+    if (verdict.filtered) return // hidden — not worth announcing
+  }
   const room = (await db.doc(`rooms/${event.params.roomId}`).get()).data()
   const roomOwner = room && (await ownerOf('rooms', event.params.roomId, room))
   if (!roomOwner) return
@@ -591,3 +611,43 @@ exports.linkPreview = onRequest(async (req, res) => {
 
 // Football rooms: live match data for the match card (functions/football.js).
 Object.assign(exports, require('./football.js')(db))
+
+// ---------- /admin unlock with attempt limits (2026-10-14) ----------
+// The passcode used to be checked by a rules comparison on a client write
+// — unlimited guesses. Now this callable checks it server-side: at most 5
+// wrong tries per 15 minutes per IP *and* per (anonymous) account, a
+// constant-time comparison, then it writes adminUnlocks/{uid} itself
+// (clients can no longer create unlock docs; rules).
+const ADMIN_MAX_TRIES = 5
+const ADMIN_WINDOW_MS = 15 * 60_000
+
+async function takeAdminAttempt(key) {
+  const ref = db.doc(`adminAttempts/${crypto.createHash('sha256').update(key).digest('hex')}`)
+  return db.runTransaction(async (tx) => {
+    const now = Date.now()
+    const prev = (await tx.get(ref)).data()
+    const fresh = !prev || now - prev.windowStart > ADMIN_WINDOW_MS
+    const count = fresh ? 1 : prev.count + 1
+    tx.set(ref, { count, windowStart: fresh ? now : prev.windowStart })
+    return { allowed: count <= ADMIN_MAX_TRIES, retryInMin: fresh ? 15 : Math.ceil((prev.windowStart + ADMIN_WINDOW_MS - now) / 60_000) }
+  })
+}
+
+exports.unlockAdmin = onCall({ region: 'europe-west1', invoker: 'public' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.')
+  const passcode = String(request.data?.passcode || '')
+  const ip = String(request.rawRequest?.headers?.['x-forwarded-for'] || request.rawRequest?.ip || 'unknown').split(',')[0].trim()
+  const [byIp, byUser] = await Promise.all([takeAdminAttempt(`ip:${ip}`), takeAdminAttempt(`uid:${request.auth.uid}`)])
+  if (!byIp.allowed || !byUser.allowed) {
+    throw new HttpsError('resource-exhausted', `Too many tries — wait ${Math.max(byIp.retryInMin, byUser.retryInMin)} min.`)
+  }
+  const real = String((await db.doc('admin/gate').get()).data()?.passcode || '')
+  const a = crypto.createHash('sha256').update(passcode).digest()
+  const b = crypto.createHash('sha256').update(real).digest()
+  if (!real || !crypto.timingSafeEqual(a, b)) {
+    await new Promise((r) => setTimeout(r, 600))
+    throw new HttpsError('permission-denied', 'Incorrect passcode.')
+  }
+  await db.doc(`adminUnlocks/${request.auth.uid}`).set({ unlockedAt: FieldValue.serverTimestamp() })
+  return { ok: true }
+})

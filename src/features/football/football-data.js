@@ -9,12 +9,14 @@ import {
 } from 'firebase/firestore'
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../../shared/firebase.js'
-import { DEFAULT_BADGES } from './badges.js'
+import { kitFor } from '../rooms/kits.js'
 
 // ---- badge catalogue (code defaults + admin additions) ----
 
-// Catalogue = DEFAULT_BADGES with Firestore `badges/{id}` merged on top.
-export function useBadgeCatalog() {
+// Catalogue for a room type = the kit's built-in badges with Firestore
+// `badges/{id}` of that type (older docs without `type` are football)
+// merged on top.
+export function useBadgeCatalog(type = 'football') {
   const [extra, setExtra] = useState([])
   useEffect(
     () =>
@@ -26,10 +28,10 @@ export function useBadgeCatalog() {
     [],
   )
   return useMemo(() => {
-    const byId = new Map(DEFAULT_BADGES.map((b) => [b.id, b]))
-    extra.forEach((b) => byId.set(b.id, { ...byId.get(b.id), ...b }))
+    const byId = new Map((kitFor(type).badges || []).map((b) => [b.id, b]))
+    extra.filter((b) => (b.type || 'football') === type).forEach((b) => byId.set(b.id, { ...byId.get(b.id), ...b }))
     return [...byId.values()]
-  }, [extra])
+  }, [extra, type])
 }
 
 export function saveBadge(badge) {
@@ -42,10 +44,11 @@ export function deleteBadge(id) {
 }
 
 // "Can't find your club/country?" — lands in /admin → Badges.
-export function requestBadge({ name, kind, where, details }) {
+export function requestBadge({ name, kind, where, details, type = 'football' }) {
   return addDoc(collection(db, 'badgeRequests'), {
     name: name.trim().slice(0, 60),
     kind,
+    type,
     where: where.trim().slice(0, 60),
     details: details.trim().slice(0, 300),
     createdAt: serverTimestamp(),

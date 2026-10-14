@@ -1,12 +1,10 @@
+import { KITS } from '../rooms/kits.js'
 import './football.css'
 
-// Room type (2026-10-13): "custom" is the original anonymous room;
-// "football" switches on the football kit (fan badges, polls; match
-// card + stickers later). More niches (anime, weird stories) slot in here.
-const ROOM_TYPES = [
-  { key: 'custom', label: '💬 Custom', hint: 'chat about anything' },
-  { key: 'football', label: '⚽ Football', hint: 'live match, badges & polls' },
-]
+// Room type: "custom" is the original anonymous room; each other type
+// switches on its kit (features/rooms/kits.js — badges, polls, stickers,
+// football's live match card).
+const ROOM_TYPES = Object.entries(KITS).map(([key, kit]) => ({ key, label: kit.label, hint: kit.hint }))
 
 export default function RoomTypePicker({ value = 'custom', onChange, disabled }) {
   return (

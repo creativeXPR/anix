@@ -8,16 +8,17 @@ import {
   POLL_MIN_OPTIONS,
   POLL_OPTION_MAX,
   POLL_QUESTION_MAX,
-  POLL_TEMPLATES,
   pollCooldownLeft,
 } from './polls.js'
+import { kitFor } from '../rooms/kits.js'
 import './football.css'
 
 // Start a poll: quick football templates or your own. Posted without a
 // sender — nobody can tell who started it.
-export default function PollComposer({ roomId, onClose }) {
+export default function PollComposer({ roomId, onClose, type = 'football' }) {
+  const POLL_TEMPLATES = kitFor(type).polls || kitFor('football').polls
   const showToast = useToast()
-  const [template, setTemplate] = useState('winner')
+  const [template, setTemplate] = useState(POLL_TEMPLATES[0].key)
   const [question, setQuestion] = useState(POLL_TEMPLATES[0].question)
   const [options, setOptions] = useState(POLL_TEMPLATES[0].options)
   const [sending, setSending] = useState(false)
@@ -77,7 +78,7 @@ export default function PollComposer({ roomId, onClose }) {
               className="field"
               value={option}
               onChange={(e) => setOptions(options.map((o, j) => (j === i ? e.target.value.slice(0, POLL_OPTION_MAX) : o)))}
-              placeholder={template === 'winner' ? (i === 0 ? 'home team' : i === 2 ? 'away team' : `option ${i + 1}`) : `option ${i + 1}`}
+              placeholder={template === 'winner' ? (i === 0 ? 'home team' : i === 2 ? 'away team' : `option ${i + 1}`) : template === 'versus' ? `character ${i + 1}` : `option ${i + 1}`}
               aria-label={`Option ${i + 1}`}
             />
             {options.length > POLL_MIN_OPTIONS && (

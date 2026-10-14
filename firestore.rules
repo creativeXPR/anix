@@ -78,6 +78,14 @@ service cloud.firestore {
       return request.auth != null && data.get('ownerHash', '') == ownerHashOf(id);
     }
 
+    // A room guest's id = hash(login uid : roomId : 'guest') — the
+    // anonymous session (or real account) behind it is verified here, so
+    // nobody posts/votes/types as someone else. ':guest' keeps it different
+    // from the room's ownerHash.
+    function guestIdOf(roomId) {
+      return hashing.sha256(request.auth.uid + ':' + roomId + ':guest').toBase64();
+    }
+
     function roomIsOpen(roomId) {
       return get(/databases/$(database)/documents/rooms/$(roomId)).data.get('status', 'open') != 'closed';
     }
@@ -87,7 +95,7 @@ service cloud.firestore {
     function validRoomMessage(roomId, data) {
       return data.keys().hasOnly(['text', 'senderId', 'imageUrl', 'replyTo', 'badge', 'sticker', 'createdAt'])
         && data.text is string && data.text.size() <= 2000
-        && data.senderId is string && data.senderId.size() > 0 && data.senderId.size() <= 40
+        && request.auth != null && data.senderId == guestIdOf(roomId)
         && optionalOwnImage(data, 'imageUrl', 'anix%2Frooms%2F' + roomId + '%2Fimages%2F')
         && (!('replyTo' in data) || data.replyTo == null
           || (data.replyTo is map && data.replyTo.keys().hasOnly(['id', 'text', 'senderId', 'imageUrl'])
@@ -131,9 +139,10 @@ service cloud.firestore {
     // "Can't find my club/country" — anyone can ask (shape checked); only
     // /admin reads and clears them.
     match /badgeRequests/{requestId} {
-      allow create: if request.resource.data.keys().hasOnly(['name', 'kind', 'where', 'details', 'createdAt'])
+      allow create: if request.resource.data.keys().hasOnly(['name', 'kind', 'type', 'where', 'details', 'createdAt'])
         && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
-        && request.resource.data.kind in ['club', 'country']
+        && request.resource.data.kind in ['club', 'country', 'series', 'vibe']
+        && request.resource.data.get('type', 'football') in ['football', 'anime', 'weird']
         && request.resource.data.where is string && request.resource.data.where.size() <= 60
         && request.resource.data.details is string && request.resource.data.details.size() <= 300
         && request.resource.data.createdAt == request.time;
@@ -145,11 +154,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Unlocking goes through the unlockAdmin function (server-side check,
+    // max 5 wrong tries / 15 min per IP and per account) — clients can
+    // only check whether they're already unlocked.
     match /adminUnlocks/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
-      allow create, update: if request.auth != null && request.auth.uid == uid &&
-        request.resource.data.passcode == get(/databases/$(database)/documents/admin/gate).data.passcode;
-      allow delete: if false;
+      allow write: if false;
+    }
+
+    match /adminAttempts/{key} {
+      allow read, write: if false;
+    }
+
+    // Admin switches (e.g. room moderation on/off) — the unlocked admin
+    // reads and flips them; functions read them with the Admin SDK.
+    match /config/{name} {
+      allow read, write: if isUnlockedAdmin();
     }
 
     // Collection-group match so a single query lists every room's
@@ -186,7 +206,7 @@ service cloud.firestore {
         // anyone sending a message bumps lastActivityAt — but only to
         // "now" (a past date would get the room auto-deleted, a future one
         // would keep it alive forever)
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt'])
+        || (request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt'])
           && request.resource.data.lastActivityAt == request.time)
         // the admin dashboard may close a reported room
         || (isUnlockedAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
@@ -204,7 +224,7 @@ service cloud.firestore {
         // Only while the room is open (a closed room is read-only).
         allow create: if roomIsOpen(roomId)
           && ((!('type' in request.resource.data) && validRoomMessage(roomId, request.resource.data))
-            || (request.resource.data.get('type', null) == 'poll' && validPoll(request.resource.data)));
+            || (request.auth != null && request.resource.data.get('type', null) == 'poll' && validPoll(request.resource.data)));
         // No edit/delete — messages are anonymous and immutable (#002).
         allow update, delete: if false;
 
@@ -213,7 +233,7 @@ service cloud.firestore {
         match /votes/{voterId} {
           allow read: if true;
           allow create, update: if roomIsOpen(roomId)
-            && voterId.size() <= 40
+            && request.auth != null && voterId == guestIdOf(roomId)
             && request.resource.data.keys().hasOnly(['option', 'updatedAt'])
             && request.resource.data.option is int
             && request.resource.data.option >= 0
@@ -224,15 +244,17 @@ service cloud.firestore {
       }
 
       match /typing/{participantId} {
-        allow read, delete: if true;
-        allow create, update: if participantId.size() <= 40
+        allow read: if true;
+        allow delete: if request.auth != null && participantId == guestIdOf(roomId);
+        allow create, update: if request.auth != null && participantId == guestIdOf(roomId)
           && request.resource.data.keys().hasOnly(['updatedAt'])
           && request.resource.data.updatedAt == request.time;
       }
 
       match /presence/{participantId} {
-        allow read, delete: if true;
-        allow create, update: if participantId.size() <= 40
+        allow read: if true;
+        allow delete: if request.auth != null && participantId == guestIdOf(roomId);
+        allow create, update: if request.auth != null && participantId == guestIdOf(roomId)
           && request.resource.data.keys().hasOnly(['updatedAt'])
           && request.resource.data.updatedAt == request.time;
       }
@@ -241,8 +263,8 @@ service cloud.firestore {
         allow create: if request.resource.data.keys().hasOnly(['messageId', 'text', 'senderId', 'reporterId', 'stickerUrl', 'createdAt'])
           && request.resource.data.messageId is string && request.resource.data.messageId.size() <= 60
           && request.resource.data.text is string && request.resource.data.text.size() <= 1000
-          && (request.resource.data.senderId == null || (request.resource.data.senderId is string && request.resource.data.senderId.size() <= 40))
-          && request.resource.data.reporterId is string && request.resource.data.reporterId.size() <= 40
+          && (request.resource.data.senderId == null || (request.resource.data.senderId is string && request.resource.data.senderId.size() <= 64))
+          && request.auth != null && request.resource.data.reporterId == guestIdOf(roomId)
           && (!('stickerUrl' in request.resource.data) || request.resource.data.stickerUrl == null
             || ownStorageUrl(request.resource.data.stickerUrl, 'anix%2Fstickers%2F'))
           && request.resource.data.createdAt == request.time;

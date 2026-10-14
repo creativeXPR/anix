@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import RoomTypePicker from '../../features/football/RoomTypePicker.jsx'
+import { KITS } from '../../features/rooms/kits.js'
 import { DEFAULT_GAME, GAMES } from '../games.js'
 import { DEFAULT_ROOM_EMOJI } from '../room-defaults.js'
 import { THEME_PRESETS } from '../theme-presets.js'
@@ -107,9 +108,9 @@ export default function CreateLinkModal({ kind, onCreate, onClose }) {
           value={roomType}
           onChange={(next) => {
             setRoomType(next)
-            // a football room starts with the ball unless you already picked an emoji
-            if (next === 'football' && emoji === DEFAULT_ROOM_EMOJI) setEmoji('⚽')
-            if (next === 'custom' && emoji === '⚽') setEmoji(DEFAULT_ROOM_EMOJI)
+            // a kit room starts with its emoji unless you already picked one
+            const kitEmojis = Object.values(KITS).map((k) => k.emoji).filter(Boolean)
+            if (emoji === DEFAULT_ROOM_EMOJI || kitEmojis.includes(emoji)) setEmoji(KITS[next].emoji || DEFAULT_ROOM_EMOJI)
           }}
         />
       )}

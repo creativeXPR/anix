@@ -55,6 +55,14 @@ export default function PollCard({ roomId, room, message, participantId, disable
     }
   }
 
+  if (message.filtered) {
+    return (
+      <div className="room-event" id={`message-${message.id}`}>
+        <span>🛡️ a poll was hidden by the filter</span>
+      </div>
+    )
+  }
+
   return (
     <div className="poll-card pop-in" id={`message-${message.id}`}>
       <span className="poll-card__tag">📊 poll</span>

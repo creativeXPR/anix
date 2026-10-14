@@ -24,6 +24,50 @@ export const PACKS = {
       ['ft', '🏁', 'full time'],
     ],
   },
+  anime: {
+    label: '🍥 Anime',
+    color: '#e91e63',
+    stickers: [
+      ['nani', '😳', 'NANI?!'],
+      ['plotarmor', '🛡️', 'plot armor'],
+      ['filler', '🥱', 'filler arc'],
+      ['friendship', '🤝', 'power of friendship'],
+      ['mc', '😤', 'main character energy'],
+      ['senpai', '🥺', 'senpai noticed me'],
+      ['isekai', '🚚', "isekai'd"],
+      ['peak', '🔥', 'PEAK FICTION'],
+      ['mid', '😐', 'mid'],
+      ['training', '🏋️', 'training arc'],
+      ['baka', '💢', 'BAKA!'],
+      ['kawaii', '🌸', 'kawaii'],
+      ['tsundere', '😤', "it's not like I like you"],
+      ['cliff', '😭', 'cliffhanger'],
+      ['binge', '📺', 'one more episode'],
+      ['sugoi', '✨', 'SUGOI'],
+    ],
+  },
+  weird: {
+    label: '👻 Weird',
+    color: '#4527a0',
+    stickers: [
+      ['saw', '👻', 'I saw it'],
+      ['nope', '🙅', 'nope.'],
+      ['chills', '😨', 'chills'],
+      ['proof', '📸', 'pics or it didn’t happen'],
+      ['cap', '🤥', 'cap'],
+      ['leaving', '🚪', "I'm leaving"],
+      ['3am', '🌙', '3am thoughts'],
+      ['aliens', '🛸', "they're here"],
+      ['sus', '🔮', 'sus energy'],
+      ['candle', '🕯️', 'story time'],
+      ['salt', '🧂', 'salt circle'],
+      ['explain', '🧐', 'explain.'],
+      ['notme', '💀', 'not me'],
+      ['pray', '🙏', 'pray for me'],
+      ['lights', '💡', 'lights ON'],
+      ['real', '😱', "it's real"],
+    ],
+  },
   general: {
     label: '✨ General',
     color: '#7b1fd4',
@@ -54,7 +98,7 @@ export const PACK_KEYS = Object.keys(PACKS)
 export function roomPack(room) {
   const pick = room?.stickerPack
   if (pick && PACKS[pick]) return pick
-  return room?.type === 'football' ? 'football' : 'general'
+  return { football: 'football', anime: 'anime', weird: 'weird' }[room?.type] || 'general'
 }
 
 export function findBuiltIn(pack, id) {

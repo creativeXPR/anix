@@ -4,7 +4,8 @@ import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import Spinner from '../../shared/components/Spinner.jsx'
 import { db } from '../../shared/firebase.js'
 import BadgeChip from '../football/BadgeChip.jsx'
-import { BADGE_GROUPS, DEFAULT_BADGES, slugify } from '../football/badges.js'
+import { slugify } from '../football/badges.js'
+import { KITS } from '../rooms/kits.js'
 import { deleteBadge, saveBadge } from '../football/football-data.js'
 
 // /admin → Badges: fan-badge requests from football rooms ("can't find my
@@ -14,7 +15,9 @@ function formatTimestamp(timestamp) {
   return timestamp?.toDate ? timestamp.toDate().toLocaleString() : ''
 }
 
-const EMPTY = { name: '', group: 'NPFL', emoji: '', c1: '#7b1fd4', c2: '#ffffff' }
+const KIT_TYPES = Object.entries(KITS).filter(([, kit]) => kit.badges)
+const BUILT_IN = KIT_TYPES.reduce((n, [, kit]) => n + kit.badges.length, 0)
+const EMPTY = { type: 'football', name: '', group: 'NPFL', emoji: '', c1: '#7b1fd4', c2: '#ffffff' }
 
 export default function BadgesAdmin({ onCount }) {
   const [requests, setRequests] = useState(null)
@@ -47,10 +50,13 @@ export default function BadgesAdmin({ onCount }) {
 
   function startFromRequest(request) {
     setFromRequest(request.id)
+    const type = request.type || 'football'
+    const groups = KITS[type]?.badgeGroups || []
     setForm({
       ...EMPTY,
+      type,
       name: request.name,
-      group: request.kind === 'country' ? 'Countries' : BADGE_GROUPS.includes(request.where) ? request.where : request.where || 'Elsewhere',
+      group: request.kind === 'country' ? 'Countries' : groups.includes(request.where) ? request.where : request.where || groups[groups.length - 1] || 'Elsewhere',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -63,6 +69,7 @@ export default function BadgesAdmin({ onCount }) {
     try {
       await saveBadge({
         id,
+        type: form.type,
         name: form.name.trim(),
         group: form.group.trim() || 'Elsewhere',
         colors: [form.c1, form.c2],
@@ -92,7 +99,7 @@ export default function BadgesAdmin({ onCount }) {
   }
 
   const preview = form.name.trim() ? { id: 'preview', name: form.name.trim(), colors: [form.c1, form.c2], emoji: form.emoji.trim() || null } : null
-  const groups = [...new Set([...BADGE_GROUPS, ...added.map((b) => b.group).filter(Boolean)])]
+  const groups = [...new Set([...(KITS[form.type]?.badgeGroups || []), ...added.filter((b) => (b.type || 'football') === form.type).map((b) => b.group).filter(Boolean)])]
 
   return (
     <section>
@@ -101,6 +108,13 @@ export default function BadgesAdmin({ onCount }) {
       <form className="admin-card admin-badge-form" onSubmit={add}>
         <b>{fromRequest ? 'add the requested badge' : 'add a badge'}</b>
         <div className="admin-badge-form__grid">
+          <select className="admin-search" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, group: KITS[e.target.value].badgeGroups?.[0] || '' })} aria-label="Room type">
+            {KIT_TYPES.map(([key, kit]) => (
+              <option key={key} value={key}>
+                {kit.label}
+              </option>
+            ))}
+          </select>
           <input className="admin-search" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="name (e.g. Ikorodu City)" maxLength={40} required />
           <input className="admin-search" list="badge-groups" value={form.group} onChange={(e) => setForm({ ...form, group: e.target.value })} placeholder="group (league, Countries…)" maxLength={40} />
           <datalist id="badge-groups">
@@ -108,7 +122,7 @@ export default function BadgesAdmin({ onCount }) {
               <option key={g} value={g} />
             ))}
           </datalist>
-          <input className="admin-search" value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} placeholder="flag emoji (countries only)" maxLength={8} />
+          <input className="admin-search" value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} placeholder="emoji (flag / series / vibe)" maxLength={8} />
           <label className="admin-badge-form__colors">
             colours
             <input type="color" value={form.c1} onChange={(e) => setForm({ ...form, c1: e.target.value })} aria-label="Main colour" />
@@ -147,7 +161,7 @@ export default function BadgesAdmin({ onCount }) {
             <div key={r.id} className="admin-card">
               <div className="admin-card__meta">
                 <span>
-                  {r.kind === 'country' ? '🌍 country' : '🏟️ club'}
+                  {KITS[r.type || 'football']?.label} · {{ country: '🌍 country', club: '🏟️ club', series: '📺 anime', vibe: '✨ vibe' }[r.kind] || r.kind}
                   {r.where ? ` · ${r.where}` : ''}
                 </span>
                 <span>{formatTimestamp(r.createdAt)}</span>
@@ -170,7 +184,7 @@ export default function BadgesAdmin({ onCount }) {
       )}
 
       <h2 className="admin-subhead">
-        added here <small>{added.length} · plus {DEFAULT_BADGES.length} built in</small>
+        added here <small>{added.length} · plus {BUILT_IN} built in</small>
       </h2>
       {added.length === 0 ? (
         <div className="admin-empty">Nothing added yet.</div>
@@ -179,7 +193,9 @@ export default function BadgesAdmin({ onCount }) {
           {added.map((b) => (
             <span key={b.id} className="admin-badge-list__item">
               <BadgeChip badge={b} size="md" />
-              <small>{b.group}</small>
+              <small>
+                {KITS[b.type || 'football']?.emoji} {b.group}
+              </small>
               <button type="button" onClick={() => setConfirm({ kind: 'badge', id: b.id, label: b.name })} aria-label={`Remove ${b.name}`}>
                 ✕
               </button>

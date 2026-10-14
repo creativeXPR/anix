@@ -2,15 +2,14 @@ import { useState } from 'react'
 import SendStatus from '../../../shared/components/SendStatus.jsx'
 import { useToast } from '../../../shared/toast-store.js'
 import BadgeChip from '../../football/BadgeChip.jsx'
+import { guestLabel } from '../../../shared/hooks/use-anonymous-participant.js'
 import StickerArt from '../../stickers/StickerArt.jsx'
 import { badgeNameColor } from '../../football/badges.js'
 import { colorForParticipant } from '../../../shared/utils/participant-color.js'
 import { hostnameFor, splitTextAndLinks } from '../linkify.js'
 import './MessageBubble.css'
 
-function displayName(participantId) {
-  return `Guest ${participantId}`
-}
+const displayName = guestLabel
 
 export default function MessageBubble({
   message,
@@ -35,6 +34,15 @@ export default function MessageBubble({
     }
     navigator.clipboard?.writeText(message.text)
     showToast('Copied', 'success')
+  }
+
+  // room moderation (when the admin has it on) hid this one
+  if (message.filtered) {
+    return (
+      <div className={`bubble-row${isOwn ? ' bubble-row--own' : ''}`} id={`message-${message.id}`}>
+        <div className="bubble bubble--filtered">🛡️ hidden by the filter</div>
+      </div>
+    )
   }
 
   return (

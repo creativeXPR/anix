@@ -1,4 +1,4 @@
-import { arrayUnion, collectionGroup, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore'
+import { arrayUnion, collectionGroup, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import ConfirmDialog from '../../shared/components/ConfirmDialog.jsx'
 import Spinner from '../../shared/components/Spinner.jsx'
@@ -23,7 +23,8 @@ function useQueue(field, value) {
             id: d.id,
             ref: d.ref,
             // messageEndpoints/{id}/messages/{id}  or  threads/{id}/messages/{id}
-            where: d.ref.parent.parent?.parent?.id === 'threads' ? 'thread' : 'link',
+            // threads/… · rooms/… · messageEndpoints/…
+            where: { threads: 'thread', rooms: 'room' }[d.ref.parent.parent?.parent?.id] || 'link',
             parentId: d.ref.parent.parent?.id,
             ...d.data(),
           })),
@@ -47,7 +48,42 @@ const FILTERS = [
   { key: 'unchecked', label: '⚠️ Unchecked' },
   { key: 'link', label: 'Links' },
   { key: 'thread', label: 'Private chats' },
+  { key: 'room', label: 'Rooms' },
 ]
+
+// config/moderation.rooms — OFF by default. On: new room messages and poll
+// questions go through the filter (functions onRoomMessage); flagged ones
+// are hidden in the room and listed here. Off: rooms aren't filtered.
+function RoomModerationSwitch() {
+  const [on, setOn] = useState(null)
+  const [saving, setSaving] = useState(false)
+  useEffect(
+    () =>
+      onSnapshot(
+        doc(db, 'config', 'moderation'),
+        (snap) => setOn(snap.data()?.rooms === true),
+        () => setOn(false),
+      ),
+    [],
+  )
+  async function toggle() {
+    setSaving(true)
+    try {
+      await setDoc(doc(db, 'config', 'moderation'), { rooms: !on, updatedAt: serverTimestamp() }, { merge: true })
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className="admin-card admin-switch">
+      <div>
+        <b>Moderate room messages</b>
+        <small>{on ? 'On — new room messages and polls go through the filter; flagged ones are hidden.' : 'Off — rooms are not filtered (links and private chats always are).'}</small>
+      </div>
+      <button type="button" className="toggle" role="switch" aria-checked={on === true} aria-label="Moderate room messages" onClick={toggle} disabled={on === null || saving} />
+    </div>
+  )
+}
 
 export default function ModerationQueue({ onCount }) {
   const filtered = useQueue('filtered', true)
@@ -99,6 +135,7 @@ export default function ModerationQueue({ onCount }) {
 
   return (
     <section>
+      <RoomModerationSwitch />
       <ListBar tools={tools} filters={FILTERS} placeholder="Search text, link or category…" />
       {notice && <p className="admin-notice">{notice}</p>}
       {items === null ? (
@@ -113,7 +150,8 @@ export default function ModerationQueue({ onCount }) {
             <div key={item.ref.path} className={`admin-card ${item.filtered ? 'admin-card--urgent' : 'admin-card--warn'}`}>
               <div className="admin-card__meta">
                 <span>
-                  {item.filtered ? '🛡️ filtered' : '⚠️ unchecked'} · {item.where === 'thread' ? `private chat (${item.from})` : `link ${item.parentId}`}
+                  {item.filtered ? '🛡️ filtered' : '⚠️ unchecked'} ·{' '}
+                  {item.where === 'thread' ? `private chat (${item.from})` : item.where === 'room' ? `room ${item.parentId}` : `link ${item.parentId}`}
                 </span>
                 <span>{formatTimestamp(item.createdAt)}</span>
               </div>
@@ -129,9 +167,11 @@ export default function ModerationQueue({ onCount }) {
               )}
               <ResolvedSender target={{ where: item.where, parentId: item.parentId, message: item }} />
               <div className="admin-card__actions">
-                <button type="button" onClick={() => setConfirm({ action: 'block', item })}>
-                  Block sender
-                </button>
+                {item.where !== 'room' && (
+                  <button type="button" onClick={() => setConfirm({ action: 'block', item })}>
+                    Block sender
+                  </button>
+                )}
                 <button type="button" className="danger" onClick={() => setConfirm({ action: 'delete', item })}>
                   Delete
                 </button>

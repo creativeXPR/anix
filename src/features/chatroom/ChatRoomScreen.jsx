@@ -18,6 +18,7 @@ import MessageBubble from './components/MessageBubble.jsx'
 import { ChatSkeleton } from '../../shared/components/Skeletons.jsx'
 import TypingIndicator from './components/TypingIndicator.jsx'
 import { useRoomBadge } from '../football/football-data.js'
+import { kitFor } from '../rooms/kits.js'
 import { IdentityPicker, IdentitySheet } from '../football/IdentityPicker.jsx'
 import MatchCard from '../football/MatchCard.jsx'
 import MatchPicker from '../football/MatchPicker.jsx'
@@ -136,6 +137,7 @@ export default function ChatRoomScreen() {
   }, [roomId])
 
   useEffect(() => {
+    if (!participantId) return undefined // guest id still being set up
     return startPresenceHeartbeat(roomId, participantId)
   }, [roomId, participantId])
 
@@ -195,6 +197,7 @@ export default function ChatRoomScreen() {
   // gave zero feedback either way, which reads as "doesn't do anything."
   async function handleReport(message) {
     try {
+      if (!participantId) return
       await reportMessage(roomId, message, participantId)
       showToast('Reported — thanks for flagging it', 'success')
     } catch (err) {
@@ -210,7 +213,9 @@ export default function ChatRoomScreen() {
   // Football rooms: everyone gets the gear — for the owner it opens room
   // settings (with their own fan identity folded inside), for everyone
   // else just their fan identity. Nothing visible to others differs.
-  const isFootball = room?.type === 'football'
+  const kit = kitFor(room?.type)
+  // rooms with a kit (football, anime, weird stories) get identity badges + polls
+  const hasKit = Boolean(kit.badges)
 
   async function handleDeleteRoom() {
     setConfirmingDelete(false)
@@ -234,6 +239,10 @@ export default function ChatRoomScreen() {
 
   async function handleSend({ text, imageFile, sticker }) {
     if ((!text && !imageFile && !sticker) || isClosed || !canSendNow()) return
+    if (!participantId) {
+      showToast('Connecting… try again in a second', 'error')
+      return
+    }
 
     const activeReplyTo = replyTo
     setReplyTo(null)
@@ -252,7 +261,7 @@ export default function ChatRoomScreen() {
         imageUrl: localImageUrl,
         sticker: sticker || null,
         senderId: participantId,
-        badge: isFootball ? badge : null,
+        badge: hasKit ? badge : null,
         replyTo: activeReplyTo
           ? { id: activeReplyTo.id, text: activeReplyTo.text, senderId: activeReplyTo.senderId }
           : null,
@@ -272,7 +281,7 @@ export default function ChatRoomScreen() {
         replyTo: activeReplyTo,
         imageFile,
         sticker,
-        badge: isFootball ? badge : null,
+        badge: hasKit ? badge : null,
         onProgress: (progress) =>
           setPendingMessages((current) => current.map((m) => (m.id === tempId ? { ...m, progress } : m))),
       })
@@ -283,7 +292,7 @@ export default function ChatRoomScreen() {
   }
 
   function handleTypingChange(isTyping) {
-    setTyping(roomId, participantId, isTyping)
+    if (participantId) setTyping(roomId, participantId, isTyping)
   }
 
   const firstUnreadMessage = messages.find(
@@ -319,19 +328,19 @@ export default function ChatRoomScreen() {
             anonymous
           </small>
         </div>
-        {(isOwner || isFootball) && (
+        {(isOwner || hasKit) && (
           <button
             type="button"
             className="chat-room__icon-button chat-room__settings"
             onClick={() => (isOwner ? setSettingsOpen(true) : setIdentityOpen(true))}
-            aria-label={isOwner ? 'Room settings' : 'Your fan identity'}
+            aria-label={isOwner ? 'Room settings' : kit.identityTitle}
           >
             <SettingsIcon />
           </button>
         )}
       </header>
 
-      {isFootball && room?.pinnedMatch && <MatchCard matchId={room.pinnedMatch} roomId={roomId} room={room} />}
+      {kit.matchCard && room?.pinnedMatch && <MatchCard matchId={room.pinnedMatch} roomId={roomId} room={room} />}
 
       <div className="chat-room__messages" ref={scrollRef} onScroll={handleScroll}>
         {initialLoading ? (
@@ -351,7 +360,7 @@ export default function ChatRoomScreen() {
                   <span>{message.text}</span>
                 </div>
               ) : message.type === 'poll' ? (
-                <PollCard roomId={roomId} room={room} message={message} participantId={participantId} disabled={isClosed} />
+                <PollCard roomId={roomId} room={room} message={message} participantId={participantId} disabled={isClosed || !participantId} />
               ) : (
               <MessageBubble
                 message={message}
@@ -382,7 +391,7 @@ export default function ChatRoomScreen() {
         onSend={handleSend}
         onTypingChange={handleTypingChange}
         disabled={isClosed}
-        onPoll={isFootball ? () => setPollOpen(true) : undefined}
+        onPoll={hasKit ? () => setPollOpen(true) : undefined}
         stickers={room ? <StickerTray room={room} onSend={(sticker) => handleSend({ sticker })} /> : null}
       />
 
@@ -395,24 +404,26 @@ export default function ChatRoomScreen() {
           onDelete={() => setConfirmingDelete(true)}
           onClose={() => setSettingsOpen(false)}
         >
-          {isFootball && (
+          {kit.matchCard && (
             <details className="settings-collapsible" open={!room.pinnedMatch}>
               <summary>📺 match card {room.pinnedMatch ? '· pinned' : ''}</summary>
               <MatchPicker value={room.pinnedMatch || null} onChange={(pinnedMatch) => updateRoomSettings(roomId, { pinnedMatch })} />
             </details>
           )}
-          {isFootball && (
+          {hasKit && (
             <details className="settings-collapsible">
-              <summary>⚽ your fan identity</summary>
-              <IdentityPicker participantId={participantId} badge={badge} onChange={setBadge} />
+              <summary>
+                {kit.emoji} {kit.identityTitle}
+              </summary>
+              <IdentityPicker participantId={participantId} badge={badge} onChange={setBadge} type={room.type} />
             </details>
           )}
         </ItemSettingsSheet>
       )}
       {identityOpen && (
-        <IdentitySheet participantId={participantId} badge={badge} onChange={setBadge} onClose={() => setIdentityOpen(false)} />
+        <IdentitySheet participantId={participantId} badge={badge} onChange={setBadge} type={room?.type} onClose={() => setIdentityOpen(false)} />
       )}
-      {pollOpen && <PollComposer roomId={roomId} onClose={() => setPollOpen(false)} />}
+      {pollOpen && <PollComposer roomId={roomId} type={room?.type} onClose={() => setPollOpen(false)} />}
       {confirmingDelete && (
         <ConfirmDialog
           title="delete this room?"

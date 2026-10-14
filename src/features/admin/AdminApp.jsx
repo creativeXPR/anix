@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
 import { db, getFirebaseAuth } from '../../shared/firebase.js'
+import { sendFunctions } from '../../shared/firebase-functions.js'
 import Spinner from '../../shared/components/Spinner.jsx'
 import { APP_VERSION } from '../../shared/version.js'
 import BadgesAdmin from './BadgesAdmin.jsx'
@@ -67,11 +69,12 @@ function AdminGate({ uid, onUnlocked }) {
     setSubmitting(true)
     setError('')
     try {
-      await setDoc(doc(db, 'adminUnlocks', uid), { passcode, unlockedAt: serverTimestamp() })
+      // checked server-side with attempt limits (unlockAdmin)
+      await httpsCallable(sendFunctions, 'unlockAdmin')({ passcode })
       onUnlocked()
     } catch (err) {
       console.error('admin unlock failed', err)
-      setError('Incorrect passcode.')
+      setError(err?.code === 'functions/resource-exhausted' ? err.message : 'Incorrect passcode.')
     } finally {
       setSubmitting(false)
     }

@@ -1555,3 +1555,35 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   (secret MIGRATION_TOKEN), removed after it ran.
 - Rules test suite (emulator, 66 cases incl. 15 owner-privacy) lives only
   in the session scratchpad; re-create from this description if needed.
+
+## Batch: niches, room moderation switch, guest ids, admin lockout (2026-10-14)
+- **Room kits** (features/rooms/kits.js): `custom` | `football` | `anime`
+  | `weird`. A kit = badges (+groups), identity wording, badge-request
+  kinds, poll templates, sticker pack, `matchCard` (football only). Anime:
+  series badges (emoji + colours), polls who-wins / peak-or-mid / sub-dub
+  / best arc; weird stories: vibe badges, polls real-or-fake / would you
+  stay / creepiness / explain. Sticker packs `anime`, `weird` added.
+  Firestore `badges` docs carry `type` (missing = football);
+  `badgeRequests` carry `type` + kind club|country|series|vibe. /admin
+  Badges has a room-type selector.
+- **Room moderation switch**: `config/moderation.rooms` (admin-only rules),
+  OFF by default, toggled in /admin → Moderation. On: onRoomMessage runs
+  the filter on new room messages + poll questions and sets `filtered`
+  (hidden in the room as "🛡️ hidden by the filter", listed in the queue
+  with a Rooms chip). Read by the function ≤ once a minute.
+- **Guest ids**: room guests sign in anonymously (silently); `senderId` =
+  hash(uid:roomId:guest) (same URL-safe base64), verified by rules for
+  messages, votes, typing, presence, reports — no posting/voting as
+  someone else; per-room so not linkable; ':guest' salt so the owner's
+  guest id ≠ ownerHash. AuthProvider: `user` = real accounts only,
+  `anyUser` incl. anonymous (rooms). `guestLabel()` = "Guest 7KQ2XD".
+- **Admin unlock**: `unlockAdmin` callable (europe-west1) — max 5 wrong
+  tries / 15 min per IP and per account (`adminAttempts`, functions-only),
+  constant-time compare, writes adminUnlocks itself; clients can't write
+  adminUnlocks any more.
+- **Send functions**: us-central1 retired; SEND_REGIONS = europe-west1.
+- Emulator rules suite now 83 cases.
+- Deploy gotcha: a callable whose first deploy half-failed was left
+  without public invoker IAM (Google 403 page); `invoker: 'public'` on an
+  *update* didn't fix it — delete + recreate did. unlockAdmin now sets
+  `invoker: 'public'` explicitly.
