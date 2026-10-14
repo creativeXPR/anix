@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { EmojiPanelSlot, EmojiToggle } from '../../shared/emoji/EmojiToggle.jsx'
+import { shareImage } from '../../shared/utils/share-image.js'
 import { useEmojiInput } from '../../shared/emoji/use-emoji-input.js'
 import { useNavigate } from 'react-router-dom'
 import { useAuthUser } from '../../shared/auth-store.js'
@@ -80,7 +81,7 @@ export default function MessageSheet({ message, endpoint, thread, onClose }) {
       const trimmed = answer.trim()
       if (trimmed !== (message.answer || '')) await saveAnswer(endpoint.id, message.id, trimmed)
       const blob = await generateMessageImageBlob(imageOptions(true))
-      await shareImage(blob, { link: shareLink, text: shareText }, showToast)
+      await shareImage(blob, { link: shareLink, text: shareText, filename: 'anix-message.png' }, showToast)
     } catch (err) {
       showToast(err.message || 'Could not share', 'error')
     } finally {
@@ -189,47 +190,4 @@ export default function MessageSheet({ message, endpoint, thread, onClose }) {
       )}
     </Sheet>
   )
-}
-
-// Native share sheet with the image + link text where supported (phones),
-// else copy the image (with the link as its text form) to the clipboard,
-// else download it. The link is also copied on its own first — story apps
-// (Instagram, Snapchat) ignore shared text, so it's ready to paste as a
-// link sticker.
-async function shareImage(blob, { link, text }, showToast) {
-  const file = new File([blob], 'anix-message.png', { type: 'image/png' })
-  const copyLink = navigator.clipboard?.writeText(link).then(
-    () => true,
-    () => false,
-  )
-  // some share targets take files but not files + text — then image only
-  const data = navigator.canShare?.({ files: [file], text })
-    ? { files: [file], text }
-    : navigator.canShare?.({ files: [file] })
-      ? { files: [file] }
-      : null
-  if (data) {
-    try {
-      await navigator.share(data)
-      if (await copyLink) showToast('Link copied too — add it as a link sticker 🔗', 'success')
-      return
-    } catch (err) {
-      if (err?.name === 'AbortError') return // user closed the share sheet
-    }
-  }
-  try {
-    await navigator.clipboard.write([
-      new ClipboardItem({ 'image/png': blob, 'text/plain': new Blob([text], { type: 'text/plain' }) }),
-    ])
-    showToast('Image copied (with your link) — paste it into your story 📸', 'success')
-  } catch {
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = 'anix-message.png'
-    anchor.click()
-    URL.revokeObjectURL(url)
-    const copied = await copyLink
-    showToast(copied ? 'Image downloaded 📸 — link copied too 🔗' : 'Image downloaded 📸', 'success')
-  }
 }

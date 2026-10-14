@@ -13,7 +13,8 @@ import {
   where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, functions, sendFunctions } from '../../shared/firebase.js'
+import { db } from '../../shared/firebase.js'
+import { functions, sendFunctions } from '../../shared/firebase-functions.js'
 
 const PAGE_SIZE = 50
 

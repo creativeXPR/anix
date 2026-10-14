@@ -16,7 +16,8 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, sendFunctions } from '../../shared/firebase.js'
+import { db } from '../../shared/firebase.js'
+import { sendFunctions } from '../../shared/firebase-functions.js'
 
 // Anonymous two-way reply (phase 2, 2026-10-12).
 //

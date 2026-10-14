@@ -1,6 +1,6 @@
 import imageCompression from 'browser-image-compression'
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage'
-import { storage } from '../../shared/firebase.js'
+import { storage } from '../../shared/firebase-storage.js'
 
 // `onProgress(0–1)` drives the sending ring on your bubble (SendStatus):
 // shrinking the image is the first 20%, the upload (real bytes sent) up to

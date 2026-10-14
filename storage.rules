@@ -11,7 +11,8 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /anix/rooms/{roomId}/images/{fileName} {
       allow read: if true;
-      allow write: if request.resource.size < 5 * 1024 * 1024
+      // images are compressed to ~1 MB before upload; never overwritten
+      allow create: if request.resource.size < 3 * 1024 * 1024
                     && request.resource.contentType.matches('image/.*');
       allow delete: if false;
     }
@@ -28,7 +29,9 @@ service firebase.storage {
 
     match /anix/rooms/{roomId}/banner/{fileName} {
       allow read: if true;
+      // a real account (the /admin page's anonymous session can't upload)
       allow write: if request.auth != null
+                    && request.auth.token.firebase.sign_in_provider != 'anonymous'
                     && request.resource.size < 5 * 1024 * 1024
                     && request.resource.contentType.matches('image/.*');
       allow delete: if false;
@@ -37,6 +40,7 @@ service firebase.storage {
     match /anix/endpoints/{endpointId}/banner/{fileName} {
       allow read: if true;
       allow write: if request.auth != null
+                    && request.auth.token.firebase.sign_in_provider != 'anonymous'
                     && request.resource.size < 5 * 1024 * 1024
                     && request.resource.contentType.matches('image/.*');
       allow delete: if false;

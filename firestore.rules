@@ -53,6 +53,42 @@ service cloud.firestore {
           || (s.keys().hasOnly(['pack', 'id']) && s.pack is string && s.pack.size() <= 20 && s.id is string && s.id.size() <= 30));
     }
 
+    // ---- Security hardening (2026-10-14 audit) ----
+    // Images anyone else's browser will load must come from this project's
+    // own Storage, under the given folder — an outside URL would let its
+    // host log the IP address of everyone viewing the room / link page
+    // (de-anonymising them) or swap in anything later.
+    function ownStorageUrl(url, folder) {
+      return url is string && url.size() < 600
+        && url.matches('^https://firebasestorage[.]googleapis[.]com/v0/b/c-xpr25[.]firebasestorage[.]app/o/' + folder + '.*');
+    }
+
+    function optionalOwnImage(data, field, folder) {
+      return !(field in data) || data[field] == null || ownStorageUrl(data[field], folder);
+    }
+
+    function roomIsOpen(roomId) {
+      return get(/databases/$(database)/documents/rooms/$(roomId)).data.get('status', 'open') != 'closed';
+    }
+
+    // A plain room message: only the fields the app writes, sane sizes,
+    // server time, images only from this room's own uploads.
+    function validRoomMessage(roomId, data) {
+      return data.keys().hasOnly(['text', 'senderId', 'imageUrl', 'replyTo', 'badge', 'sticker', 'createdAt'])
+        && data.text is string && data.text.size() <= 2000
+        && data.senderId is string && data.senderId.size() > 0 && data.senderId.size() <= 40
+        && optionalOwnImage(data, 'imageUrl', 'anix%2Frooms%2F' + roomId + '%2Fimages%2F')
+        && (!('replyTo' in data) || data.replyTo == null
+          || (data.replyTo is map && data.replyTo.keys().hasOnly(['id', 'text', 'senderId', 'imageUrl'])
+            && (!('text' in data.replyTo) || data.replyTo.text == null || (data.replyTo.text is string && data.replyTo.text.size() <= 2000))
+            && (!('imageUrl' in data.replyTo) || data.replyTo.imageUrl == null
+              || ownStorageUrl(data.replyTo.imageUrl, 'anix%2Frooms%2F' + roomId + '%2Fimages%2F')
+              || ownStorageUrl(data.replyTo.imageUrl, 'anix%2Fstickers%2F'))))
+        && (!('badge' in data) || data.badge == null || (data.badge is map && data.badge.size() <= 4))
+        && (!('sticker' in data) || data.sticker == null || validSticker(data.sticker))
+        && data.createdAt == request.time;
+    }
+
     function pollOption(options, i) {
       return options[i] is string && options[i].size() > 0 && options[i].size() <= 40;
     }
@@ -128,8 +164,18 @@ service cloud.firestore {
       // bypasses these rules) for the handle-uniqueness/3-cap checks —
       // no direct client create.
       allow create: if false;
-      allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid)
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt'])
+      // Owner: room settings only (never ownerId/handle — those are set by
+      // the createRoom function), and the photo must be our own upload.
+      allow update: if (request.auth != null && resource.data.ownerId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['emoji', 'bannerImageUrl', 'themeColor', 'status', 'type', 'pinnedMatch', 'stickerPack', 'lastActivityAt'])
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['bannerImageUrl'])
+            || optionalOwnImage(request.resource.data, 'bannerImageUrl', 'anix%2Frooms%2F' + roomId + '%2Fbanner%2F')))
+        // anyone sending a message bumps lastActivityAt — but only to
+        // "now" (a past date would get the room auto-deleted, a future one
+        // would keep it alive forever)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivityAt'])
+          && request.resource.data.lastActivityAt == request.time)
         // the admin dashboard may close a reported room
         || (isUnlockedAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
           && request.resource.data.status == 'closed');
@@ -143,12 +189,10 @@ service cloud.firestore {
         // snapshot), or a poll: `type: 'poll'`, question as `text`, 2–4
         // `options`, and NO senderId — polls are never attributed
         // (2026-10-13, football rooms).
-        allow create: if (!('type' in request.resource.data)
-            && (!('badge' in request.resource.data) || request.resource.data.badge == null
-              || (request.resource.data.badge is map && request.resource.data.badge.size() <= 4))
-            && (!('sticker' in request.resource.data) || request.resource.data.sticker == null
-              || validSticker(request.resource.data.sticker)))
-          || (request.resource.data.type == 'poll' && validPoll(request.resource.data));
+        // Only while the room is open (a closed room is read-only).
+        allow create: if roomIsOpen(roomId)
+          && ((!('type' in request.resource.data) && validRoomMessage(roomId, request.resource.data))
+            || (request.resource.data.get('type', null) == 'poll' && validPoll(request.resource.data)));
         // No edit/delete — messages are anonymous and immutable (#002).
         allow update, delete: if false;
 
@@ -156,7 +200,9 @@ service cloud.firestore {
         // changeable; only on polls, only a real option index.
         match /votes/{voterId} {
           allow read: if true;
-          allow create, update: if request.resource.data.keys().hasOnly(['option', 'updatedAt'])
+          allow create, update: if roomIsOpen(roomId)
+            && voterId.size() <= 40
+            && request.resource.data.keys().hasOnly(['option', 'updatedAt'])
             && request.resource.data.option is int
             && request.resource.data.option >= 0
             && request.resource.data.option < get(/databases/$(database)/documents/rooms/$(roomId)/messages/$(messageId)).data.options.size()
@@ -166,15 +212,28 @@ service cloud.firestore {
       }
 
       match /typing/{participantId} {
-        allow read, write: if true;
+        allow read, delete: if true;
+        allow create, update: if participantId.size() <= 40
+          && request.resource.data.keys().hasOnly(['updatedAt'])
+          && request.resource.data.updatedAt == request.time;
       }
 
       match /presence/{participantId} {
-        allow read, write: if true;
+        allow read, delete: if true;
+        allow create, update: if participantId.size() <= 40
+          && request.resource.data.keys().hasOnly(['updatedAt'])
+          && request.resource.data.updatedAt == request.time;
       }
 
       match /reports/{reportId} {
-        allow create: if true;
+        allow create: if request.resource.data.keys().hasOnly(['messageId', 'text', 'senderId', 'reporterId', 'stickerUrl', 'createdAt'])
+          && request.resource.data.messageId is string && request.resource.data.messageId.size() <= 60
+          && request.resource.data.text is string && request.resource.data.text.size() <= 1000
+          && (request.resource.data.senderId == null || (request.resource.data.senderId is string && request.resource.data.senderId.size() <= 40))
+          && request.resource.data.reporterId is string && request.resource.data.reporterId.size() <= 40
+          && (!('stickerUrl' in request.resource.data) || request.resource.data.stickerUrl == null
+            || ownStorageUrl(request.resource.data.stickerUrl, 'anix%2Fstickers%2F'))
+          && request.resource.data.createdAt == request.time;
         // Only readable via the Admin SDK (a future moderation tool),
         // never by clients.
         allow read, update, delete: if false;
@@ -196,6 +255,12 @@ service cloud.firestore {
       allow update: if isUnlockedAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blocked']);
       allow update: if request.auth != null && resource.data.ownerId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['bannerImageUrl', 'themeColor', 'game', 'prompt', 'blocked'])
+        // senders load this photo on the link page — it must be our own
+        // upload, not an outside URL that could log their IP addresses
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['bannerImageUrl'])
+          || optionalOwnImage(request.resource.data, 'bannerImageUrl', 'anix%2Fendpoints%2F' + endpointId + '%2Fbanner%2F'))
         && (!('prompt' in request.resource.data)
           || request.resource.data.prompt == null
           || (request.resource.data.prompt is string && request.resource.data.prompt.size() <= 80));
@@ -323,7 +388,14 @@ service cloud.firestore {
     // (isUnlockedAdmin) or the Firebase console, never by a regular
     // client.
     match /feedback/{feedbackId} {
-      allow create: if request.auth != null;
+      // a real account (not the /admin page's anonymous session), as itself
+      allow create: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.resource.data.keys().hasOnly(['userId', 'text', 'kind', 'createdAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+        && (request.resource.data.kind == null || request.resource.data.kind in ['bug', 'idea', 'love'])
+        && request.resource.data.createdAt == request.time;
       allow list, get: if isUnlockedAdmin();
       allow update, delete: if false;
     }

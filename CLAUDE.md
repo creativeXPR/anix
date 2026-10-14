@@ -1499,3 +1499,37 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   to them show "Sticker" + thumbnail. Reports carry `stickerUrl`, shown in
   /admin Reports (Delete message removes it from the room).
 - Owner anonymity unchanged: sticker messages look the same for everyone.
+
+## Share images, bundle split, security hardening (2026-10-14)
+- **Share images**: poll results (after you vote, "share ↗") and the
+  pinned match score (↗ on the match card) render story images
+  (features/football/share-cards.js, room colours) with a "vote / argue
+  anonymously 👀" pill + the room link; shared via
+  shared/utils/share-image.js (moved out of MessageSheet; same fallback
+  chain: native share → clipboard → download, link copied for stickers).
+  Nothing on them identifies who shared.
+- **Bundle split**: every screen is `React.lazy` (App.jsx, `RouteLoading`
+  shimmer bar); Storage / Functions SDKs moved to
+  shared/firebase-storage.js / firebase-functions.js so they load only with
+  screens that need them; vite `manualChunks` puts React and Firebase core
+  in long-cached vendor chunks; `/assets/**` served immutable for a year.
+  App code ~19 kB gz; a link visitor now downloads ~265 kB gz instead of
+  353 kB, and React/Firebase stay cached across deploys. boot.js imports
+  the vendor chunks up front so link pages fetch them in parallel.
+- **Security audit → rules hardening** (tested: emulator suite of 51
+  allow/deny cases; the previous live rules failed 18 of them):
+  room messages whitelist fields + sizes + server time + room must be
+  open; images/stickers/banners must be this project's own Storage URLs in
+  the right folder (outside URLs could log viewers' IPs and de-anonymise
+  them); `lastActivityAt` only settable to request.time (back-dating got
+  rooms auto-deleted); owners can't change ownerId/handle; typing/presence
+  docs are just `{updatedAt}`; room reports + feedback shape-checked;
+  feedback needs a real (non-anonymous) account; votes only while open;
+  banner uploads need a real account; room images create-only, < 3 MB.
+- **Known, not fixed (needs a design decision)**: rooms/endpoints/threads
+  docs expose `ownerId` to any reader → the same uid on a room and on a
+  person's public link (or in a private chat they opened) reveals who owns
+  the room. Fix = per-doc salted owner hash + private ownership index.
+  Also inherent to guest (no-auth) rooms: votes can be stuffed and
+  senderIds spoofed by clearing storage / scripting; admin passcode can be
+  brute-forced (keep it long); anyone can upload room images/stickers.

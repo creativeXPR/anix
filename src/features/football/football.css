@@ -529,3 +529,43 @@
   color: var(--text-h);
   font: 700 12px var(--font-body);
 }
+
+/* share buttons (poll results / match score → story image) */
+.poll-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.poll-card__foot .poll-card__meta {
+  margin-top: 0;
+}
+
+.poll-card__share {
+  --press: 0.9;
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font: 700 12px var(--font-body);
+  cursor: pointer;
+}
+
+.match-card__share {
+  --press: 0.88;
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font: 800 15px var(--font-body);
+  cursor: pointer;
+}

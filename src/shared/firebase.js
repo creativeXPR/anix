@@ -1,8 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
-import { getFunctions } from 'firebase/functions'
-import { getStorage } from 'firebase/storage'
 
 // Values come from Vite's VITE_-prefixed env vars — see .env.example.
 // Anix shares the "c-xpr25" Firebase project with other apps (see
@@ -20,11 +18,9 @@ export const firebaseApp = initializeApp(firebaseConfig)
 // Named database, not the project's default one — that's what actually
 // separates Anix's data from the other apps sharing this project.
 export const db = getFirestore(firebaseApp, 'anix')
-export const storage = getStorage(firebaseApp)
-export const functions = getFunctions(firebaseApp)
-// The moderated send callables live next to the `anix` database
-// (europe-west1) — see functions/index.js SEND_REGIONS.
-export const sendFunctions = getFunctions(firebaseApp, 'europe-west1')
+// Storage and Functions live in firebase-storage.js / firebase-functions.js
+// so their SDKs load only with the screens that upload or call functions —
+// not for every visitor opening a shared link (bundle split, 2026-10-14).
 export const googleProvider = new GoogleAuthProvider()
 
 // Lazy, unlike db/storage above: getAuth() validates the API key

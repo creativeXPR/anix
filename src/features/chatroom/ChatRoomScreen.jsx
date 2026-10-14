@@ -329,7 +329,7 @@ export default function ChatRoomScreen() {
         )}
       </header>
 
-      {isFootball && room?.pinnedMatch && <MatchCard matchId={room.pinnedMatch} />}
+      {isFootball && room?.pinnedMatch && <MatchCard matchId={room.pinnedMatch} roomId={roomId} room={room} />}
 
       <div className="chat-room__messages" ref={scrollRef} onScroll={handleScroll}>
         {initialLoading ? (
@@ -349,7 +349,7 @@ export default function ChatRoomScreen() {
                   <span>{message.text}</span>
                 </div>
               ) : message.type === 'poll' ? (
-                <PollCard roomId={roomId} message={message} participantId={participantId} disabled={isClosed} />
+                <PollCard roomId={roomId} room={room} message={message} participantId={participantId} disabled={isClosed} />
               ) : (
               <MessageBubble
                 message={message}

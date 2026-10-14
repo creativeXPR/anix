@@ -2,7 +2,8 @@ import { collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { useEffect, useState } from 'react'
 import { useAuthUser } from '../../shared/auth-store.js'
-import { db, storage } from '../../shared/firebase.js'
+import { db } from '../../shared/firebase.js'
+import { storage } from '../../shared/firebase-storage.js'
 
 // "My stickers" (2026-10-14): signed in → users/{uid}/stickers (follows
 // you across devices); guest → this browser. When a guest signs in, their

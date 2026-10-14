@@ -1,6 +1,6 @@
 import imageCompression from 'browser-image-compression'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { storage } from './firebase.js'
+import { storage } from './firebase-storage.js'
 
 // `kind` picks the Storage path prefix — 'room' -> anix/rooms/{id}/banner/,
 // 'endpoint' -> anix/endpoints/{id}/banner/ (see storage.rules).

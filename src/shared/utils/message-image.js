@@ -6,9 +6,9 @@
 const WIDTH = 720
 const HEIGHT = 1280
 const MAX_LINES = 12
-const DISPLAY_FONT = "'Bricolage Grotesque', Poppins, sans-serif"
+export const DISPLAY_FONT = "'Bricolage Grotesque', Poppins, sans-serif"
 
-function roundRect(ctx, x, y, width, height, radius) {
+export function roundRect(ctx, x, y, width, height, radius) {
   ctx.beginPath()
   ctx.moveTo(x + radius, y)
   ctx.arcTo(x + width, y, x + width, y + height, radius)
@@ -18,7 +18,7 @@ function roundRect(ctx, x, y, width, height, radius) {
   ctx.closePath()
 }
 
-function wrapText(ctx, text, maxWidth) {
+export function wrapText(ctx, text, maxWidth) {
   const words = text.split(/\s+/)
   const lines = []
   let currentLine = ''
@@ -42,7 +42,7 @@ function wrapText(ctx, text, maxWidth) {
   return lines
 }
 
-function loadImage(url) {
+export function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -76,7 +76,7 @@ function drawImageCover(ctx, img, x, y, width, height) {
 
 // Cut wrapped lines to `max` (in place), ending the last kept line with
 // "…" when anything was dropped.
-function clip(lines, max) {
+export function clip(lines, max) {
   if (lines.length <= max) return lines
   lines.length = max
   lines[max - 1] = `${lines[max - 1].replace(/[\s.,…]+$/, '')}…`

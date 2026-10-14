@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '../../shared/toast-store.js'
+import { shareImage } from '../../shared/utils/share-image.js'
+import { generatePollStoryBlob } from './share-cards.js'
 import { castVote, subscribeToVotes } from './polls.js'
 import './football.css'
 
 // A poll in the room timeline. No sender shown or stored — polls are
 // never attributed. Tap an option to vote (tap another to change).
-export default function PollCard({ roomId, message, participantId, disabled }) {
+export default function PollCard({ roomId, room, message, participantId, disabled }) {
   const showToast = useToast()
   const [votes, setVotes] = useState([])
   const [busy, setBusy] = useState(false)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => subscribeToVotes(roomId, message.id, setVotes), [roomId, message.id])
 
@@ -17,6 +20,28 @@ export default function PollCard({ roomId, message, participantId, disabled }) {
   const total = counts.reduce((a, b) => a + b, 0)
   const mine = votes.find((v) => v.id === participantId)?.option
   const leader = total ? counts.indexOf(Math.max(...counts)) : -1
+
+  // Results as a story image with the room link — for WhatsApp status etc.
+  async function share() {
+    if (sharing) return
+    setSharing(true)
+    try {
+      const link = `${window.location.origin}/r/${roomId}`
+      const blob = await generatePollStoryBlob({
+        question: message.text,
+        options,
+        counts,
+        roomName: room?.handle || 'anix',
+        themeColor: room?.themeColor,
+        link,
+      })
+      await shareImage(blob, { link, text: `${message.text} 👀 vote anonymously: ${link}`, filename: 'anix-poll.png' }, showToast)
+    } catch {
+      showToast('Could not make the image', 'error')
+    } finally {
+      setSharing(false)
+    }
+  }
 
   async function vote(index) {
     if (busy || disabled || index === mine) return
@@ -56,10 +81,17 @@ export default function PollCard({ roomId, message, participantId, disabled }) {
           )
         })}
       </div>
-      <small className="poll-card__meta">
-        {total} {total === 1 ? 'vote' : 'votes'}
-        {mine === undefined ? ' · vote to see results' : ' · tap another to change'}
-      </small>
+      <div className="poll-card__foot">
+        <small className="poll-card__meta">
+          {total} {total === 1 ? 'vote' : 'votes'}
+          {mine === undefined ? ' · vote to see results' : ' · tap another to change'}
+        </small>
+        {mine !== undefined && (
+          <button type="button" className="poll-card__share" onClick={share} disabled={sharing}>
+            {sharing ? '…' : 'share ↗'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

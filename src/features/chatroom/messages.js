@@ -14,7 +14,8 @@ import {
   where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../../shared/firebase.js'
+import { db } from '../../shared/firebase.js'
+import { functions } from '../../shared/firebase-functions.js'
 import { uploadRoomImage } from './upload-image.js'
 
 const PAGE_SIZE = 30

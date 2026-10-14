@@ -23,7 +23,11 @@ function stableBootEntry() {
       const styles = [...html.matchAll(/<link rel="stylesheet"[^>]*href="(\/assets\/[^"]+\.css)"[^>]*>/g)]
       if (!script) throw new Error('stableBootEntry: no entry script in dist/index.html')
 
-      fs.writeFileSync('dist/boot.js', `import '${script[1]}'\n`)
+      // Static imports in boot.js download in parallel — list the vendor
+      // chunks index.html modulepreloads first, so link pages don't fetch
+      // entry → react → firebase one after another on slow data.
+      const preloads = [...html.matchAll(/<link rel="modulepreload"[^>]*href="(\/assets\/[^"]+\.js)"[^>]*>/g)].map((m) => m[1])
+      fs.writeFileSync('dist/boot.js', [...preloads, script[1]].map((src) => `import '${src}'`).join('\n') + '\n')
       fs.writeFileSync('dist/boot.css', styles.map((m) => `@import url('${m[1]}');`).join('\n') + '\n')
 
       const template = html
@@ -39,6 +43,21 @@ function stableBootEntry() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), stableBootEntry()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Vendor code that rarely changes gets its own long-cached chunks,
+        // so an app deploy doesn't make returning visitors re-download
+        // React or Firebase (bundle split, 2026-10-14).
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) return 'react'
+          if (/[\\/]node_modules[\\/](@firebase[\\/](app|component|logger|util|auth|firestore|webchannel-wrapper)|firebase[\\/](app|auth|firestore))[\\/]/.test(id)) return 'firebase'
+          return undefined
+        },
+      },
+    },
+  },
   define: {
     // shown as "v1.1" (major.minor) in Profile and /admin
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
