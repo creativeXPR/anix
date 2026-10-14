@@ -57,6 +57,13 @@ service cloud.firestore {
         && data.createdAt == request.time;
     }
 
+    // Live match data for football rooms' match card — written only by
+    // the footballSync Cloud Function (Admin SDK); everyone reads.
+    match /footballMatches/{matchId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Football fan badges: built-in list in code + these, managed from
     // /admin → Badges. Everyone reads; only the unlocked admin writes.
     match /badges/{badgeId} {

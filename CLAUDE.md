@@ -1444,3 +1444,33 @@ named processor). Needs `language.googleapis.com` enabled on c-xpr25.
   heated. Next stages: live match card (free football-data.org +
   API-Football, scheduled function), then stickers + sticker maker
   (guest stickers in the browser, migrated to the account on sign-up).
+
+## Football rooms — stage 2: live match card (2026-10-14)
+- **footballSync** (functions/football.js, wired at the end of index.js):
+  `onSchedule('every 2 minutes', europe-west1)` with secrets
+  `FOOTBALL_DATA_TOKEN` (football-data.org free: 12 comps, 10 req/min,
+  lagging scores, no minute) and `API_FOOTBALL_KEY` (api-sports free:
+  ~100/day; used only for Nigeria — NPFL id 399, Federation Cup 1231,
+  Super Eagles; gives the real minute). Keys came from Stores/.txt and
+  were set with `firebase functions:secrets:set … --data-file` — never
+  printed or committed.
+- Each tick reads ONE doc (`football/state`: per-match summary, fetch
+  timestamps, API-Football daily counter capped at 85) and writes
+  `footballMatches/{fd-<id>|af-<id>}` only when status/score/minute/kickoff
+  changed. football-data: whole ±1-day list every tick while a match is in
+  its play window, else every 30 min. API-Football: today+tomorrow list
+  every 3h, `ids=` live refresh every 6 min while a Nigerian match is on.
+  Matches kept from kickoff-4h to +36h.
+- Normalised match: `{source, comp, compCode, home{name,short},
+  away{name,short}, kickoff(Timestamp), status upcoming|live|ht|ft|off,
+  minute|null, score{home,away}}`. Client estimates the minute for
+  football-data matches (matches.js `matchMinute`, ~15 min half-time).
+- Owner pins a match in room settings ("📺 match card", MatchPicker) →
+  `rooms/{id}.pinnedMatch`; MatchCard shows under the room header for
+  everyone. Not attributed.
+- Kick-off / goal / half time / full time post an unattributed
+  `{type:'event', text}` message (Admin SDK) into every room pinned to that
+  match; rendered as a centered pill. Clients can't create `event`
+  messages (rules allow only plain or poll). onRoomMessage skips `event`
+  messages (no owner push for goals).
+- Rules: `footballMatches` read-only for clients.

@@ -334,6 +334,8 @@ exports.onEndpointMessage = onAnixDocCreated(
 )
 
 exports.onRoomMessage = onAnixDocCreated('rooms/{roomId}/messages/{messageId}', async (event) => {
+  // match announcements (football rooms) aren't activity worth a push
+  if (event.data?.data()?.type === 'event') return
   const room = (await db.doc(`rooms/${event.params.roomId}`).get()).data()
   if (!room?.ownerId) return
   await sendToOwner(room.ownerId, {
@@ -548,3 +550,6 @@ exports.linkPreview = onRequest(async (req, res) => {
     res.status(200).send(INDEX_TEMPLATE)
   }
 })
+
+// Football rooms: live match data for the match card (functions/football.js).
+Object.assign(exports, require('./football.js')(db))

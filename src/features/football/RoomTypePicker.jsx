@@ -5,7 +5,7 @@ import './football.css'
 // card + stickers later). More niches (anime, weird stories) slot in here.
 const ROOM_TYPES = [
   { key: 'custom', label: '💬 Custom', hint: 'chat about anything' },
-  { key: 'football', label: '⚽ Football', hint: 'fan badges & polls' },
+  { key: 'football', label: '⚽ Football', hint: 'live match, badges & polls' },
 ]
 
 export default function RoomTypePicker({ value = 'custom', onChange, disabled }) {

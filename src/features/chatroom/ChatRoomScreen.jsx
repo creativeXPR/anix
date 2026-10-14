@@ -18,6 +18,8 @@ import { ChatSkeleton } from '../../shared/components/Skeletons.jsx'
 import TypingIndicator from './components/TypingIndicator.jsx'
 import { useRoomBadge } from '../football/football-data.js'
 import { IdentityPicker, IdentitySheet } from '../football/IdentityPicker.jsx'
+import MatchCard from '../football/MatchCard.jsx'
+import MatchPicker from '../football/MatchPicker.jsx'
 import PollCard from '../football/PollCard.jsx'
 import PollComposer from '../football/PollComposer.jsx'
 import {
@@ -311,6 +313,8 @@ export default function ChatRoomScreen() {
         )}
       </header>
 
+      {isFootball && room?.pinnedMatch && <MatchCard matchId={room.pinnedMatch} />}
+
       <div className="chat-room__messages" ref={scrollRef} onScroll={handleScroll}>
         {initialLoading ? (
           <ChatSkeleton variant="room" />
@@ -324,7 +328,11 @@ export default function ChatRoomScreen() {
                   <span>new messages</span>
                 </div>
               )}
-              {message.type === 'poll' ? (
+              {message.type === 'event' ? (
+                <div className="room-event" id={`message-${message.id}`}>
+                  <span>{message.text}</span>
+                </div>
+              ) : message.type === 'poll' ? (
                 <PollCard roomId={roomId} message={message} participantId={participantId} disabled={isClosed} />
               ) : (
               <MessageBubble
@@ -367,6 +375,12 @@ export default function ChatRoomScreen() {
           onDelete={() => setConfirmingDelete(true)}
           onClose={() => setSettingsOpen(false)}
         >
+          {isFootball && (
+            <details className="settings-collapsible" open={!room.pinnedMatch}>
+              <summary>📺 match card {room.pinnedMatch ? '· pinned' : ''}</summary>
+              <MatchPicker value={room.pinnedMatch || null} onChange={(pinnedMatch) => updateRoomSettings(roomId, { pinnedMatch })} />
+            </details>
+          )}
           {isFootball && (
             <details className="settings-collapsible">
               <summary>⚽ your fan identity</summary>
